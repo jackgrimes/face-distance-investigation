@@ -1,0 +1,10 @@
+name: face_distance_investigation
+dependencies:
+- python==3.5.2
+- scipy == 0.18.0
+- pandas==0.23.4
+- pip:
+    - face_recognition==1.2.3
+    - matplotlib==3.0.2
+    - numpy==1.16.0
+    - scikit-learn==0.20
