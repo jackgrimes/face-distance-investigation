@@ -47,8 +47,10 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def encodings_builder(base_directory, image_no_max, image_attempt_no_max, attempting_all, encodings_start_time,
-                      start_time):
+def encodings_builder(base_directory, image_no_max, image_attempt_no_max, attempting_all):
+    encodings_start_time = datetime.datetime.now()
+    print("\n" + encodings_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the encodings..." + "\n")
+
     all_encodings = []
     person_no = 0
     image_no = 1
@@ -69,16 +71,16 @@ def encodings_builder(base_directory, image_no_max, image_attempt_no_max, attemp
                             "Now scanning " + person + ", image " + str(image_attempt_no) + " of " + str(image_no_max) +
                             " (" + str(round(100 * (image_attempt_no - 1) / image_no_max, 2)) + "% completed)." +
                             " (" + str(failed_attempts) + " images have failed.)\n" +
-                            timesince(start_time, 100 * (image_attempt_no - 1) / image_no_max) + " of scans")
+                            timesince(encodings_start_time, 100 * (image_attempt_no - 1) / image_no_max) + " of scans")
                     else:
                         print("Now scanning " + person + ", image " + str(image_no) + " of " + str(image_no_max) +
                               " (" + str(round(100 * (image_no - 1) / image_no_max, 2)) + "% completed). " +
-                              timesince(start_time, 100 * (image_no - 1) / image_no_max) + " of scans")
+                              timesince(encodings_start_time, 100 * (image_no - 1) / image_no_max) + " of scans")
                     encodings = face_recognition.face_encodings(loaded_image)
                     if len(encodings) > 0:
                         all_encodings.append([person_path, image_path, encodings])
                         if (image_no >= image_no_max) or (image_attempt_no >= image_attempt_no_max):
-                            return all_encodings, image_no, person_no, image_attempt_no, failed_attempts, images_without_faces
+                            return all_encodings, image_no, person_no, image_attempt_no, failed_attempts, images_without_faces, encodings_start_time
                         image_no += 1
                         image_attempt_no += 1
                         this_persons_successful_encodings += 1
@@ -91,10 +93,10 @@ def encodings_builder(base_directory, image_no_max, image_attempt_no_max, attemp
                         images_without_faces.append(image_path)
             if this_persons_successful_encodings == 0:
                 person_no -= 1
-    return all_encodings, image_no, person_no, image_attempt_no, failed_attempts, images_without_faces
+    return all_encodings, image_no, person_no, image_attempt_no, failed_attempts, images_without_faces, encodings_start_time
 
 
-def get_number_faces_to_scan(base_directory):
+def get_number_faces_to_scan(base_directory, overall_start_time):
     print("")
     image_no_max = input("How many images do you want to compare? (leave blank for all)")
 
@@ -122,10 +124,19 @@ def get_number_faces_to_scan(base_directory):
 
     print(str(image_no_max) + " files to attempt to scan and compare")
     print("")
-    return image_no_max, attempting_all, person_count
+
+    file_str_prefix = os.path.join(r"C:\dev\data\face_distance_investigation",
+                                   overall_start_time.strftime("%Y_%m_%d %H_%M_%S_") + (
+                                       "_attempting_all_images_" if attempting_all else ("_attempting_" + str(
+                                           image_no_max) + "_images_")))
+
+    return image_no_max, attempting_all, person_count, file_str_prefix
 
 
 def encodings_comparer(all_encodings):
+    comparisons_start_time = datetime.datetime.now()
+    print("\n" + comparisons_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the comparisons..." + "\n")
+
     all_comparisons = []
     image_counter = 1
     same_face_distances = []
@@ -167,10 +178,9 @@ def encodings_comparer(all_encodings):
     same_face_distances = list(same_face_distances_df['distance'])
     different_face_distances = list(different_face_distances_df['distance'])
 
-    print(datetime.datetime.now().strftime("%Y_%m_%d %H:%M:%S") + " Image comparisons completed!")
-    print("")
+    print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Image comparisons completed!")
 
-    return same_face_distances, different_face_distances, comparison_counter, different_face_distances_df, same_face_distances_df
+    return same_face_distances, different_face_distances, comparison_counter, different_face_distances_df, same_face_distances_df, comparisons_start_time
 
 
 def plotter(fig_names, cumulative, same_face_distances, different_face_distances, comparison_counter, image_no,
@@ -238,43 +248,52 @@ def roc_auc(same_face_distances, different_face_distances, ax, comparison_counte
         person_no) + " people",
              ha='center', va='center', transform=ax.transAxes)
     fig.savefig(file_str_prefix + r'_5_ROC.png')
-    print(datetime.datetime.now().strftime("%Y_%m_%d %H:%M:%S") + " Graphs completed.")
+    print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Graphs completed.")
     print("")
 
 
-def precision_recall(same_face_distances, different_face_distances, file_str_prefix):
-    bin_boundaries = [0, 0.1] + [round(x, 2) for x in np.arange(0.2, 1.1, 0.01)] + [1.2, 1.3, 1.4, 1.5, 2]
+def precision_recall(same_face_distances, different_face_distances, file_str_prefix, doing_precision_recall):
+    precision_recall_start_time = datetime.datetime.now()
 
-    same_faces_binned = pd.DataFrame({'same_faces': same_face_distances})
-    same_faces_binned['same_faces_freq'] = pd.cut(same_faces_binned.same_faces, bin_boundaries)
+    if doing_precision_recall:
+        print(
+            datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now doing precision and recall calculations...")
+        print("")
 
-    different_faces_binned = pd.DataFrame({'different_faces': different_face_distances})
-    different_faces_binned['different_faces_freq'] = pd.cut(different_faces_binned.different_faces, bin_boundaries)
+        bin_boundaries = [0, 0.1] + [round(x, 2) for x in np.arange(0.2, 1.1, 0.01)] + [1.2, 1.3, 1.4, 1.5, 2]
 
-    precision_recall_table = pd.concat([same_faces_binned.same_faces_freq.value_counts(),
-                                        different_faces_binned.different_faces_freq.value_counts()], axis=1,
-                                       sort=True)
+        same_faces_binned = pd.DataFrame({'same_faces': same_face_distances})
+        same_faces_binned['same_faces_freq'] = pd.cut(same_faces_binned.same_faces, bin_boundaries)
 
-    precision_recall_table['same_faces_freq_cum'] = precision_recall_table['same_faces_freq'].cumsum() - \
-                                                    precision_recall_table['same_faces_freq']
+        different_faces_binned = pd.DataFrame({'different_faces': different_face_distances})
+        different_faces_binned['different_faces_freq'] = pd.cut(different_faces_binned.different_faces, bin_boundaries)
 
-    precision_recall_table['different_faces_freq_cum'] = precision_recall_table['different_faces_freq'].cumsum() - \
-                                                         precision_recall_table['different_faces_freq']
-    precision_recall_table['different_faces_freq_anti_cum'] = sum(precision_recall_table['different_faces_freq']) - \
-                                                              precision_recall_table['different_faces_freq_cum']
+        precision_recall_table = pd.concat([same_faces_binned.same_faces_freq.value_counts(),
+                                            different_faces_binned.different_faces_freq.value_counts()], axis=1,
+                                           sort=True)
 
-    precision_recall_table['cutoff'] = [
-        float(str(x).split('(')[1].split(',')[0].replace(' ', '').replace("'", "").replace(']', '')) for x in
-        list(precision_recall_table.index)]
+        precision_recall_table['same_faces_freq_cum'] = precision_recall_table['same_faces_freq'].cumsum() - \
+                                                        precision_recall_table['same_faces_freq']
 
-    precision_recall_table['precision'] = precision_recall_table['same_faces_freq_cum'] / (
-            precision_recall_table['same_faces_freq_cum'] + precision_recall_table['different_faces_freq_cum'])
-    precision_recall_table['recall'] = precision_recall_table['same_faces_freq_cum'] / (
-        sum(precision_recall_table['same_faces_freq']))
+        precision_recall_table['different_faces_freq_cum'] = precision_recall_table['different_faces_freq'].cumsum() - \
+                                                             precision_recall_table['different_faces_freq']
+        precision_recall_table['different_faces_freq_anti_cum'] = sum(precision_recall_table['different_faces_freq']) - \
+                                                                  precision_recall_table['different_faces_freq_cum']
 
-    precision_recall_table.to_csv(file_str_prefix + '_6_precision_recall_table.csv')
+        precision_recall_table['cutoff'] = [
+            float(str(x).split('(')[1].split(',')[0].replace(' ', '').replace("'", "").replace(']', '')) for x in
+            list(precision_recall_table.index)]
 
-    print(datetime.datetime.now().strftime("%Y_%m_%d %H:%M:%S") + " Precision and recall calculations completed.")
+        precision_recall_table['precision'] = precision_recall_table['same_faces_freq_cum'] / (
+                precision_recall_table['same_faces_freq_cum'] + precision_recall_table['different_faces_freq_cum'])
+        precision_recall_table['recall'] = precision_recall_table['same_faces_freq_cum'] / (
+            sum(precision_recall_table['same_faces_freq']))
+
+        precision_recall_table.to_csv(file_str_prefix + '_6_precision_recall_table.csv')
+
+        print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Precision and recall calculations completed.")
+
+        return precision_recall_start_time
 
 
 def output_most_similar_different_people_and_most_different_same_faces(different_face_distances_df,
@@ -302,7 +321,7 @@ def run_outputs(attempting_all, images_without_faces, image_attempt_no, failed_a
     if attempting_all:
         outputs_str += (str(image_attempt_no) + " images attempted.\n")
         outputs_str += ("faces not found in " + str(failed_attempts) + " images.\n")
-    outputs_str += (str(image_no) + " images succeeded.")
+    outputs_str += (str(image_no) + " images succeeded.\n\n")
     if (len(images_without_faces) > 0):
         outputs_str += ("\n\nImages without faces:\n\n" +
                         "\n".join(images_without_faces) +
@@ -323,3 +342,36 @@ def run_outputs(attempting_all, images_without_faces, image_attempt_no, failed_a
     print('\n' + outputs_str)
 
     print('\nAll Done!')
+
+
+def all_graphs(same_face_distances, different_face_distances, comparison_counter, image_no, person_no,
+               file_str_prefix, doing_graphs):
+    graph_start_time = datetime.datetime.now()
+    print("\n" + graph_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the graphs..." + "\n")
+
+    if doing_graphs:
+        print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making the graphs...")
+        print("")
+
+        # Non-cumulative histograms
+
+        ax = plotter(
+            fig_names=('_1_distributions_same_diff_distances', '_2_distributions_same_diff_distances_with_norm'),
+            cumulative=False, same_face_distances=same_face_distances,
+            different_face_distances=different_face_distances, comparison_counter=comparison_counter,
+            image_no=image_no, person_no=person_no, file_str_prefix=file_str_prefix)
+
+        # Cumulative histograms
+
+        ax = plotter(fig_names=(
+            '_3_distributions_same_diff_distances_cum', '_4_distributions_same_diff_distances_with_norm_cum'),
+            cumulative=1, same_face_distances=same_face_distances,
+            different_face_distances=different_face_distances, comparison_counter=comparison_counter,
+            image_no=image_no, person_no=person_no, file_str_prefix=file_str_prefix)
+
+        # ROC and AUC
+
+        roc_auc(same_face_distances, different_face_distances, ax, comparison_counter, person_no, image_no,
+                file_str_prefix)
+
+        return graph_start_time
