@@ -3,7 +3,7 @@ import datetime
 from configs import doing_graphs, doing_precision_recall, base_directory
 from utils import encodings_builder, get_number_faces_to_scan, encodings_comparer, \
     precision_recall, run_outputs, output_most_similar_different_people_and_most_different_same_faces, \
-    all_graphs
+    all_graphs, get_lookalikes_image
 
 
 def main():
@@ -41,8 +41,12 @@ def main():
                                                    doing_precision_recall)
 
     # Find lookalikes and different-looking images of same person
-    output_most_similar_different_people_and_most_different_same_faces(different_face_distances_df,
+    different_face_distances_df_sorted, same_face_distances_df_sorted = output_most_similar_different_people_and_most_different_same_faces(different_face_distances_df,
                                                                        same_face_distances_df, file_str_prefix)
+
+    # Image of lookalikes
+    get_lookalikes_image(different_face_distances_df_sorted, file_str_prefix)
+
 
     # Write out timings and info about images that failed
     run_outputs(attempting_all, images_without_faces, image_attempt_no, failed_attempts, image_no, overall_start_time,
