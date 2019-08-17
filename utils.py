@@ -92,29 +92,34 @@ def encodings_builder(base_directory, image_no_max, image_attempt_no_max, attemp
                             encodings_other_images = [face_recognition.face_encodings(x) for x in other_images_loaded]
                             encodings_other_images_flattened = [item for sublist in encodings_other_images for item in
                                                                 sublist]
-                            encodings_with_index = list(zip(range(len(encodings)), encodings))
-                            all_distances = []
-                            for pair in itertools.product(encodings_with_index, encodings_other_images_flattened):
-                                all_distances.append(
-                                    [pair[0][0], face_recognition.face_distance([pair[0][1]], pair[1])])
-                            all_distances = [[x, y[0]] for [x, y] in all_distances]
-                            all_distances_df = pd.DataFrame(all_distances)
-                            all_distances_df = all_distances_df.rename(columns={0: 'face', 1: 'distance'})
-                            all_distances_df_average = all_distances_df.groupby(['face']).mean()
-                            all_distances_df_average = all_distances_df_average.reset_index()
+                            if len(encodings_other_images_flattened) == 0:
+                                print("\nCannot find face in other image(s), and not sure which face in original image is of this person, aborting...\n")
+                                image_attempt_no += 1
+                                failed_attempts += 1
+                            else:
+                                encodings_with_index = list(zip(range(len(encodings)), encodings))
+                                all_distances = []
+                                for pair in itertools.product(encodings_with_index, encodings_other_images_flattened):
+                                    all_distances.append(
+                                        [pair[0][0], face_recognition.face_distance([pair[0][1]], pair[1])])
+                                all_distances = [[x, y[0]] for [x, y] in all_distances]
+                                all_distances_df = pd.DataFrame(all_distances)
+                                all_distances_df = all_distances_df.rename(columns={0: 'face', 1: 'distance'})
+                                all_distances_df_average = all_distances_df.groupby(['face']).mean()
+                                all_distances_df_average = all_distances_df_average.reset_index()
 
-                            guess_for_face_of_interest = all_distances_df_average[
-                                all_distances_df_average['distance'] == all_distances_df_average['distance'].min()][
-                                'face'].values[0]
-                            
-                            encodings = [encodings[guess_for_face_of_interest]]
-                            all_encodings.append([person_path, image_path, encodings])
-                            if (image_no >= image_no_max) or (image_attempt_no >= image_attempt_no_max):
-                                return all_encodings, image_no, person_no, image_attempt_no, failed_attempts, images_without_faces, encodings_start_time
-                            image_no += 1
-                            image_attempt_no += 1
-                            this_persons_successful_encodings += 1
-                            print("")
+                                guess_for_face_of_interest = all_distances_df_average[
+                                    all_distances_df_average['distance'] == all_distances_df_average['distance'].min()][
+                                    'face'].values[0]
+
+                                encodings = [encodings[guess_for_face_of_interest]]
+                                all_encodings.append([person_path, image_path, encodings])
+                                if (image_no >= image_no_max) or (image_attempt_no >= image_attempt_no_max):
+                                    return all_encodings, image_no, person_no, image_attempt_no, failed_attempts, images_without_faces, encodings_start_time
+                                image_no += 1
+                                image_attempt_no += 1
+                                this_persons_successful_encodings += 1
+                                print("")
 
                     elif len(encodings) == 1:
                         all_encodings.append([person_path, image_path, encodings])
@@ -378,7 +383,7 @@ def run_outputs(attempting_all, images_without_faces, image_attempt_no, failed_a
                               completion_time) + ' on calculation precision_recall_table\n\n' +
                     time_diff(overall_start_time, completion_time) + ' in total')
 
-    with open(file_str_prefix + "_10_run_notes.txt", "w") as file:
+    with open(file_str_prefix + "_11_run_notes.txt", "w") as file:
         file.write(outputs_str)
 
     print('\n' + outputs_str)
@@ -418,16 +423,16 @@ def all_graphs(same_face_distances, different_face_distances, comparison_counter
 
         return graph_start_time
 
-def get_lookalikes_image(different_face_distances_df_sorted, file_str_prefix):
+def combine_face_images(face_images_df, file_str_prefix, image_note_str):
 
-    different_face_distances_df_sorted['path1'] = different_face_distances_df_sorted['path1'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
-    different_face_distances_df_sorted['path2'] = different_face_distances_df_sorted['path2'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
+    face_images_df['path1'] = face_images_df['path1'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
+    face_images_df['path2'] = face_images_df['path2'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
 
-    different_face_distances_df_sorted['path1'] = different_face_distances_df_sorted['path1'].str.replace(r'\\', '/')
-    different_face_distances_df_sorted['path2'] = different_face_distances_df_sorted['path2'].str.replace(r'\\', '/')
+    face_images_df['path1'] = face_images_df['path1'].str.replace(r'\\', '/')
+    face_images_df['path2'] = face_images_df['path2'].str.replace(r'\\', '/')
 
     i = 0
-    for row in different_face_distances_df_sorted[0:50].itertuples():
+    for row in face_images_df[0:50].itertuples():
 
         image1 = cv2.imread(row[2])
         image2 = cv2.imread(row[1])
@@ -445,5 +450,5 @@ def get_lookalikes_image(different_face_distances_df_sorted, file_str_prefix):
 
         i += 1
 
-    cv2.imwrite(os.path.join(os.path.join(file_str_prefix + '_9_lookalikes.jpg')),
+    cv2.imwrite(os.path.join(os.path.join(file_str_prefix + image_note_str)),
                 all_images)
