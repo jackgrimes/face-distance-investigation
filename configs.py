@@ -6,3 +6,6 @@ base_directory = r'C:\dev\data\lfw'
 
 # Define allowed extensions for the images to scan
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+
+# Any images to exclude, because they cause problems
+IMAGES_TO_EXCLUDE = []

@@ -14,14 +14,7 @@ def main():
                                                                                            overall_start_time)
 
     # Build up encodings dataset
-    (all_encodings,
-     image_no,
-     person_no,
-     image_attempt_no,
-     failed_attempts,
-     images_without_faces,
-     encodings_start_time) = encodings_builder(
-        base_directory, image_no_max, image_no_max, attempting_all)
+    (all_encodings, encodings_start_time, counters) = encodings_builder(base_directory, image_no_max, attempting_all)
 
     # Compare the encodings
     (same_face_distances,
@@ -33,27 +26,27 @@ def main():
         all_encodings)
 
     # Make graphs
-    graph_start_time = all_graphs(same_face_distances, different_face_distances, comparison_counter, image_no,
-                                  person_no, file_str_prefix, doing_graphs)
+    graph_start_time = all_graphs(same_face_distances, different_face_distances, comparison_counter, counters,
+                                  file_str_prefix, doing_graphs)
 
     # Calculate precision and recall
     precision_recall_start_time = precision_recall(same_face_distances, different_face_distances, file_str_prefix,
                                                    doing_precision_recall)
 
     # Find lookalikes and different-looking images of same person
-    different_face_distances_df_sorted, same_face_distances_df_sorted = output_most_similar_different_people_and_most_different_same_faces(different_face_distances_df,
-                                                                       same_face_distances_df, file_str_prefix)
+    different_face_distances_df_sorted, same_face_distances_df_sorted = output_most_similar_different_people_and_most_different_same_faces(
+        different_face_distances_df,
+        same_face_distances_df, file_str_prefix)
 
     # Image of lookalikes etc
 
     combine_face_images(different_face_distances_df_sorted, file_str_prefix, '_9_lookalikes.jpg')
     combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_10_different_looking_same_people.jpg')
 
-
     # Write out timings and info about images that failed
-    run_outputs(attempting_all, images_without_faces, image_attempt_no, failed_attempts, image_no, overall_start_time,
+    run_outputs(attempting_all, overall_start_time,
                 encodings_start_time, comparisons_start_time, graph_start_time, precision_recall_start_time,
-                file_str_prefix
+                file_str_prefix, counters
                 )
 
 
