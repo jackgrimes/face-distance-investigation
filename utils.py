@@ -54,7 +54,7 @@ def print_updates(person, n_people, images_to_attempt, encodings_start_time, cou
     print("Person number " + str(counters['person_number'] + 1) + " of " + str(n_people) + ", " + str(
         round(100 * (counters['person_number']) / n_people, 2)) + "% complete")
     print("Scanned " + str(counters['images_attempted']) + " of " + str(images_to_attempt) + " images")
-    print(timesince(encodings_start_time, 100 * (counters['person_number']) / n_people) + " of people")
+    print(timesince(encodings_start_time, 100 * (counters['person_number']) / n_people))
     print("")
 
 
@@ -245,7 +245,6 @@ def encodings_comparer(all_encodings):
     comparisons_start_time = datetime.datetime.now()
     print(comparisons_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the comparisons..." + "\n")
 
-    all_comparisons = []
     image_counter = 1
     same_face_distances = []
     different_face_distances = []
