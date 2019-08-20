@@ -1,5 +1,4 @@
 import datetime
-import itertools
 import os
 
 import cv2
@@ -14,7 +13,12 @@ from configs import ALLOWED_EXTENSIONS, IMAGES_TO_EXCLUDE
 
 
 def timesince(time, percent_done):
-    """Returns a string of the time taken so far, and an estimate of the time remaining (given the time taken so far and the percentage complete"""
+    """
+    Returns a string of the time taken so far, and an estimate of the time remaining (given the time taken so far and the percentage complete
+    :param time:
+    :param percent_done:
+    :return:
+    """
     diff = datetime.datetime.now() - time
     days, seconds = diff.days, diff.seconds
     hours = days * 24 + seconds // 3600
@@ -30,11 +34,16 @@ def timesince(time, percent_done):
                 "Estimated " + str(remaining_hours) + " hours, " + str(remaining_minutes) + " minutes, " + str(
                     remaining_seconds) + " seconds to completion")
     except:
-        return ("Cannot calculate times done and remaining at this time")
+        return "Cannot calculate times done and remaining at this time"
 
 
 def time_diff(time1, time2):
-    """Returns a sting of duration between two times"""
+    """
+    Returns a sting of duration between two times
+    :param time1:
+    :param time2:
+    :return:
+    """
     diff = time2 - time1
     days, seconds = diff.days, diff.seconds
     hours = days * 24 + seconds // 3600
@@ -44,21 +53,41 @@ def time_diff(time1, time2):
 
 
 def allowed_file(filename):
-    """A check if the file in question has an allowed extension type"""
+    """
+    A check if the file in question has an allowed extension type
+    :param filename:
+    :return:
+    """
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def print_updates(person, n_people, images_to_attempt, encodings_start_time, counters):
+def print_updates_get_encodings(person, n_people, images_to_attempt, encodings_start_time, counters):
+    """
+    So that the user knows roughly how long it will take to finish getting the face encodings
+    :param person:
+    :param n_people:
+    :param images_to_attempt:
+    :param encodings_start_time:
+    :param counters:
+    :return:
+    """
     print("Getting face encodings for images of " + person)
     print("Person number " + str(counters['person_number'] + 1) + " of " + str(n_people) + ", " + str(
-        round(100 * (counters['person_number']) / n_people, 2)) + "% complete")
+        round(100 * (counters['person_number']) / n_people)) + "% complete")
     print("Scanned " + str(counters['images_attempted']) + " of " + str(images_to_attempt) + " images")
     print(timesince(encodings_start_time, 100 * (counters['person_number']) / n_people))
     print("")
 
 
 def find_which_people_and_images_to_scan(attempting_all, base_directory, image_no_max):
+    """
+
+    :param attempting_all:
+    :param base_directory:
+    :param image_no_max:
+    :return:
+    """
     people = [folder for folder in os.listdir(base_directory) if ("." not in folder)]
     people_directory_full_paths = [os.path.join(base_directory, person) for person in os.listdir(base_directory) if
                                    (".db" not in person)]
@@ -70,7 +99,7 @@ def find_which_people_and_images_to_scan(attempting_all, base_directory, image_n
 
     if not attempting_all:
         first_exceeding = [(x > image_no_max) for x in people_image_nos_cum].index(True)
-        people = people[:first_exceeding]
+        people = people[:first_exceeding + 1]
         images_to_attempt = image_no_max
     else:
         images_to_attempt = people_image_nos_cum[-1]
@@ -80,7 +109,12 @@ def find_which_people_and_images_to_scan(attempting_all, base_directory, image_n
     return people, images_to_attempt, n_people
 
 
-def get_this_persons_encodings(person_path):
+def get_this_persons_encodings(person_path, image_no_max, counters):
+    """
+
+    :param person_path:
+    :return:
+    """
     images_of_this_person = [os.path.join(person_path, file) for file in os.listdir(person_path) if
                              (".db" not in file)]
 
@@ -91,10 +125,21 @@ def get_this_persons_encodings(person_path):
     encodings_all_images_this_person = [face_recognition.face_encodings(loaded_image) for loaded_image in
                                         face_rec_loaded_images_of_this_person]
 
+    if (counters['images_successfully_scanned'] + len(encodings_all_images_this_person)) > image_no_max:
+        n_to_remove = (counters['images_successfully_scanned'] + len(encodings_all_images_this_person)) - image_no_max
+        encodings_all_images_this_person = encodings_all_images_this_person[0:-n_to_remove]
+        images_of_this_person = images_of_this_person[0:-n_to_remove]
+
     return encodings_all_images_this_person, images_of_this_person
 
 
 def check_for_no_or_multiple_images_in_photo(encodings_all_images_this_person, images_of_this_person):
+    """
+
+    :param encodings_all_images_this_person:
+    :param images_of_this_person:
+    :return:
+    """
     number_faces_found_in_each_image = [len(encodings_list) for encodings_list in
                                         encodings_all_images_this_person]
     images_without_faces = [(number == 0) for number in number_faces_found_in_each_image]
@@ -112,6 +157,12 @@ def check_for_no_or_multiple_images_in_photo(encodings_all_images_this_person, i
 
 
 def select_right_face_encodings_from_each_image(paths_for_images_with_faces, selected_encodings_from_this_image):
+    """
+
+    :param paths_for_images_with_faces:
+    :param selected_encodings_from_this_image:
+    :return:
+    """
     images_with_unidentifiable_faces = []
     for i in range(len(paths_for_images_with_faces)):
         this_image_encodings = selected_encodings_from_this_image[i]
@@ -139,7 +190,7 @@ def select_right_face_encodings_from_each_image(paths_for_images_with_faces, sel
             else:
                 selected_encodings_from_this_image = []
                 print("Cannot tell which face is this persons!")
-                images_with_unidentifiable_faces += paths_for_images_with_faces[i]
+                images_with_unidentifiable_faces.append(paths_for_images_with_faces[i])
 
     n_encodings_this_person = sum([len(x) for x in selected_encodings_from_this_image])
 
@@ -154,6 +205,13 @@ def select_right_face_encodings_from_each_image(paths_for_images_with_faces, sel
 
 
 def encodings_builder(base_directory, image_no_max, attempting_all):
+    """
+
+    :param base_directory:
+    :param image_no_max:
+    :param attempting_all:
+    :return:
+    """
     encodings_start_time = datetime.datetime.now()
     print(encodings_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the encodings..." + "\n")
 
@@ -165,6 +223,7 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
     counters = {'images_attempted': 0,
                 'image_no': 0,
                 'person_number': 0,
+                'images_successfully_scanned': 0,
                 'photos_with_multiple_faces_and_no_other_images_to_compare_with_count': 0,
                 'photos_with_multiple_faces_and_no_other_images_to_compare_with': [],
                 'photos_with_no_faces_found_count': 0,
@@ -173,9 +232,9 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
     for person_number, person in enumerate(people):
         person_path = os.path.join(base_directory, person)
 
-        print_updates(person, n_people, images_to_attempt, encodings_start_time, counters)
+        print_updates_get_encodings(person, n_people, images_to_attempt, encodings_start_time, counters)
 
-        encodings_all_images_this_person, images_of_this_person = get_this_persons_encodings(person_path)
+        encodings_all_images_this_person, images_of_this_person = get_this_persons_encodings(person_path, image_no_max, counters)
 
         (image_paths_without_faces,
          number_faces_found_in_each_image,
@@ -195,18 +254,26 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
         counters['photos_with_no_faces_found_paths'].extend(image_paths_without_faces)
         counters['image_no'] += this_persons_encodings.shape[0]
         counters['images_attempted'] += len(images_of_this_person)
+        counters['images_successfully_scanned'] += this_persons_encodings.shape[0]
         counters['person_number'] += 1
 
         all_encodings = pd.concat([all_encodings, this_persons_encodings])
 
     all_encodings = all_encodings.reset_index(drop=True)
+    all_encodings = all_encodings[['person_path', 'image_path', 'encodings']]
 
     return all_encodings, encodings_start_time, counters
 
 
 def get_number_faces_to_scan(base_directory, overall_start_time):
-    print("")
-    image_no_max = input("How many images do you want to compare? (leave blank for all)")
+    """
+
+    :param base_directory:
+    :param overall_start_time:
+    :return:
+    """
+
+    image_no_max = input("\nHow many images do you want to compare? (leave blank for all)")
 
     # Count the number of folders (people) in dataset, if no number defined then compare with all
 
@@ -230,7 +297,7 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
             file_count += len([x for x in files if x != "Thumbs.db"])
         image_no_max = file_count
 
-    print(str(image_no_max) + " files to attempt to scan and compare")
+    print("\n" + str(image_no_max) + " files to attempt to scan and compare")
     print("")
 
     file_str_prefix = os.path.join(r"C:\dev\data\face_distance_investigation",
@@ -242,60 +309,75 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
 
 
 def encodings_comparer(all_encodings):
+    """
+
+    :param all_encodings:
+    :return:
+    """
     comparisons_start_time = datetime.datetime.now()
     print(comparisons_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the comparisons..." + "\n")
 
-    image_counter = 1
     same_face_distances = []
     different_face_distances = []
     comparison_counter = 0
     total_comparisons = (len(all_encodings) * (len(all_encodings) - 1)) / 2
-    start_time = datetime.datetime.now()
 
     # Looping over combinations of images, and getting face_distance for each pair
 
     for image in range(1, len(all_encodings)):
         for image2 in range(0, image):
-            distances = []
+            same = all_encodings.loc[image]['person_path'] == all_encodings.loc[image2]['person_path']
             try:
-                this_distance = face_recognition.face_distance(all_encodings.loc[image]['encodings'],
+                face_distance = face_recognition.face_distance(all_encodings.loc[image]['encodings'],
                                                                all_encodings.loc[image2]['encodings'][0])[0]
-                distances.append(this_distance)
-            except Exception as e:
-                print(e)
-            if len(distances) > 0:
-                comparison_counter += 1
-                if comparison_counter % 1000000 == 0:
-                    print(
-                        "Comparison number " + str(comparison_counter) + " of " + str(
-                            round(total_comparisons)) + " (" +
-                        str(round(100 * comparison_counter / total_comparisons, 2)) + "% completed). " +
-                        timesince(start_time,
-                                  100 * (comparison_counter / total_comparisons)) + " of comparisons")
-                    print("")
-                distance = min(distances)
-                same = all_encodings.loc[image]['person_path'] == all_encodings.loc[image2]['person_path']
+
                 if same:
                     same_face_distances.append(
-                        (all_encodings.loc[image]['image_path'], all_encodings.loc[image2]['image_path'], distance))
+                        (
+                        all_encodings.loc[image]['image_path'], all_encodings.loc[image2]['image_path'], face_distance))
                 else:
                     different_face_distances.append(
-                        (all_encodings.loc[image]['image_path'], all_encodings.loc[image2]['image_path'], distance))
-        image_counter += 1
+                        (
+                        all_encodings.loc[image]['image_path'], all_encodings.loc[image2]['image_path'], face_distance))
+
+            except Exception as e:
+                print(e)
+
+            comparison_counter += 1
+            if comparison_counter % 1000000 == 0:
+                print(
+                    "Comparison number " + str(comparison_counter) + " of " + str(
+                        round(total_comparisons)) + " (" +
+                    str(round(100 * comparison_counter / total_comparisons, 2)) + "% completed). " +
+                    timesince(start_time,
+                              100 * (comparison_counter / total_comparisons)) + " of comparisons\n")
 
     same_face_distances_df = pd.DataFrame(same_face_distances, columns=['path1', 'path2', 'distance'])
     different_face_distances_df = pd.DataFrame(different_face_distances, columns=['path1', 'path2', 'distance'])
 
-    same_face_distances = list(same_face_distances_df['distance'])
-    different_face_distances = list(different_face_distances_df['distance'])
-
     print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Image comparisons completed!")
 
-    return same_face_distances, different_face_distances, comparison_counter, different_face_distances_df, same_face_distances_df, comparisons_start_time
+    return same_face_distances_df, different_face_distances_df, comparisons_start_time, comparison_counter
 
 
-def plotter(fig_names, cumulative, same_face_distances, different_face_distances, comparison_counter, image_no,
+def plotter(fig_names, cumulative, same_face_distances_df, different_face_distances_df, comparison_counter, image_no,
             person_no, file_str_prefix):
+    """
+
+    :param fig_names:
+    :param cumulative:
+    :param same_face_distances_df:
+    :param different_face_distances_df:
+    :param comparison_counter:
+    :param image_no:
+    :param person_no:
+    :param file_str_prefix:
+    :return:
+    """
+
+    same_face_distances = same_face_distances_df['distance']
+    different_face_distances = different_face_distances_df['distance']
+
     fig = plt.figure()
     fig.clf()
     xmin, xmax = min(min(same_face_distances), min(different_face_distances)), max(max(same_face_distances),
@@ -341,8 +423,23 @@ def plotter(fig_names, cumulative, same_face_distances, different_face_distances
     return ax
 
 
-def roc_auc(same_face_distances, different_face_distances, ax, comparison_counter, counters,
+def roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
             file_str_prefix):
+
+    """
+
+    :param same_face_distances_df:
+    :param different_face_distances_df:
+    :param ax:
+    :param comparison_counter:
+    :param counters:
+    :param file_str_prefix:
+    :return:
+    """
+
+    same_face_distances = same_face_distances_df['distance']
+    different_face_distances = different_face_distances_df['distance']
+
     scores = np.concatenate((same_face_distances, different_face_distances), axis=0)
     y = np.concatenate((np.array([1] * len(same_face_distances)), np.array([0] * len(different_face_distances))),
                        axis=0)
@@ -364,10 +461,22 @@ def roc_auc(same_face_distances, different_face_distances, ax, comparison_counte
     print("")
 
 
-def precision_recall(same_face_distances, different_face_distances, file_str_prefix, doing_precision_recall):
+def precision_recall(same_face_distances_df, different_face_distances_df, file_str_prefix, doing_precision_recall):
+    """
+
+    :param same_face_distances_df:
+    :param different_face_distances_df:
+    :param file_str_prefix:
+    :param doing_precision_recall:
+    :return:
+    """
     precision_recall_start_time = datetime.datetime.now()
 
     if doing_precision_recall:
+
+        same_face_distances = same_face_distances_df['distance']
+        different_face_distances = different_face_distances_df['distance']
+
         print(
             datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now doing precision and recall calculations...")
         print("")
@@ -410,6 +519,14 @@ def precision_recall(same_face_distances, different_face_distances, file_str_pre
 
 def output_most_similar_different_people_and_most_different_same_faces(different_face_distances_df,
                                                                        same_face_distances_df, file_str_prefix):
+    """
+
+    :param different_face_distances_df:
+    :param same_face_distances_df:
+    :param file_str_prefix:
+    :return:
+    """
+
     # Most similar lookalikes
 
     different_face_distances_df_sorted = different_face_distances_df.sort_values(by=['distance'], ascending=True).head(
@@ -429,6 +546,19 @@ def output_most_similar_different_people_and_most_different_same_faces(different
 def run_outputs(attempting_all, overall_start_time,
                 encodings_start_time, comparisons_start_time, graph_start_time, precision_recall_start_time,
                 file_str_prefix, counters):
+    """
+
+    :param attempting_all:
+    :param overall_start_time:
+    :param encodings_start_time:
+    :param comparisons_start_time:
+    :param graph_start_time:
+    :param precision_recall_start_time:
+    :param file_str_prefix:
+    :param counters:
+    :return:
+    """
+
     completion_time = datetime.datetime.now()
 
     outputs_str = ""
@@ -441,12 +571,12 @@ def run_outputs(attempting_all, overall_start_time,
         len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'])) + " images.\n\n")
 
     if (len(counters['photos_with_no_faces_found_paths']) > 0):
-        outputs_str += ("\nImages without faces:\n\n" +
+        outputs_str += ("Images without faces:\n\n" +
                         "\n".join(counters['photos_with_no_faces_found_paths']) +
                         "\n\n")
 
     if (len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) > 0):
-        outputs_str += ("\nImages where not sure which face to pick:\n\n" +
+        outputs_str += ("Images where not sure which face to pick:\n\n" +
                         "\n".join(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) +
                         "\n\n")
 
@@ -468,8 +598,18 @@ def run_outputs(attempting_all, overall_start_time,
     print('\nAll Done!')
 
 
-def all_graphs(same_face_distances, different_face_distances, comparison_counter, counters,
+def all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter, counters,
                file_str_prefix, doing_graphs):
+    """
+
+    :param same_face_distances_df:
+    :param different_face_distances_df:
+    :param comparison_counter:
+    :param counters:
+    :param file_str_prefix:
+    :param doing_graphs:
+    :return:
+    """
     graph_start_time = datetime.datetime.now()
     print("\n" + graph_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the graphs..." + "\n")
 
@@ -481,27 +621,34 @@ def all_graphs(same_face_distances, different_face_distances, comparison_counter
 
         ax = plotter(
             fig_names=('_1_distributions_same_diff_distances', '_2_distributions_same_diff_distances_with_norm'),
-            cumulative=False, same_face_distances=same_face_distances,
-            different_face_distances=different_face_distances, comparison_counter=comparison_counter,
+            cumulative=False, same_face_distances_df=same_face_distances_df,
+            different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
             image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
 
         # Cumulative histograms
 
         ax = plotter(fig_names=(
             '_3_distributions_same_diff_distances_cum', '_4_distributions_same_diff_distances_with_norm_cum'),
-            cumulative=1, same_face_distances=same_face_distances,
-            different_face_distances=different_face_distances, comparison_counter=comparison_counter,
+            cumulative=1, same_face_distances_df=same_face_distances_df,
+            different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
             image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
 
         # ROC and AUC
 
-        roc_auc(same_face_distances, different_face_distances, ax, comparison_counter, counters,
+        roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
                 file_str_prefix)
 
         return graph_start_time
 
 
 def combine_face_images(face_images_df, file_str_prefix, image_note_str):
+    """
+
+    :param face_images_df:
+    :param file_str_prefix:
+    :param image_note_str:
+    :return:
+    """
     face_images_df['path1'] = face_images_df['path1'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
     face_images_df['path2'] = face_images_df['path2'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
 

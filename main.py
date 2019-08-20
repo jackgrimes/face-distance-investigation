@@ -17,24 +17,23 @@ def main():
     (all_encodings, encodings_start_time, counters) = encodings_builder(base_directory, image_no_max, attempting_all)
 
     # Compare the encodings
-    (same_face_distances,
-     different_face_distances,
-     comparison_counter,
+    (same_face_distances_df,
      different_face_distances_df,
-     same_face_distances_df,
-     comparisons_start_time) = encodings_comparer(
+     comparisons_start_time,
+     comparison_counter) = encodings_comparer(
         all_encodings)
 
     # Make graphs
-    graph_start_time = all_graphs(same_face_distances, different_face_distances, comparison_counter, counters,
-                                  file_str_prefix, doing_graphs)
+    graph_start_time = all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter, counters,
+                       file_str_prefix, doing_graphs)
 
     # Calculate precision and recall
-    precision_recall_start_time = precision_recall(same_face_distances, different_face_distances, file_str_prefix,
+    precision_recall_start_time = precision_recall(same_face_distances_df, different_face_distances_df, file_str_prefix,
                                                    doing_precision_recall)
 
     # Find lookalikes and different-looking images of same person
-    different_face_distances_df_sorted, same_face_distances_df_sorted = output_most_similar_different_people_and_most_different_same_faces(
+    (different_face_distances_df_sorted,
+     same_face_distances_df_sorted) = output_most_similar_different_people_and_most_different_same_faces(
         different_face_distances_df,
         same_face_distances_df, file_str_prefix)
 
