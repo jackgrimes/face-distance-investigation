@@ -349,7 +349,7 @@ def encodings_comparer(all_encodings):
                     "Comparison number " + str(comparison_counter) + " of " + str(
                         round(total_comparisons)) + " (" +
                     str(round(100 * comparison_counter / total_comparisons, 2)) + "% completed). " +
-                    timesince(start_time,
+                    timesince(comparisons_start_time,
                               100 * (comparison_counter / total_comparisons)) + " of comparisons\n")
 
     same_face_distances_df = pd.DataFrame(same_face_distances, columns=['path1', 'path2', 'distance'])
