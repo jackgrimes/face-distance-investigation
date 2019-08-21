@@ -77,7 +77,6 @@ def print_updates_get_encodings(person, n_people, images_to_attempt, encodings_s
         round(100 * (counters['person_number']) / n_people)) + "% complete")
     print("Scanned " + str(counters['images_attempted']) + " of " + str(images_to_attempt) + " images")
     print(timesince(encodings_start_time, 100 * (counters['person_number']) / n_people))
-    print("")
 
 
 def find_which_people_and_images_to_scan(attempting_all, base_directory, image_no_max):
@@ -234,7 +233,8 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
 
         print_updates_get_encodings(person, n_people, images_to_attempt, encodings_start_time, counters)
 
-        encodings_all_images_this_person, images_of_this_person = get_this_persons_encodings(person_path, image_no_max, counters)
+        encodings_all_images_this_person, images_of_this_person = get_this_persons_encodings(person_path, image_no_max,
+                                                                                             counters)
 
         (image_paths_without_faces,
          number_faces_found_in_each_image,
@@ -258,6 +258,8 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
         counters['person_number'] += 1
 
         all_encodings = pd.concat([all_encodings, this_persons_encodings])
+
+        print("")
 
     all_encodings = all_encodings.reset_index(drop=True)
     all_encodings = all_encodings[['person_path', 'image_path', 'encodings']]
@@ -326,22 +328,23 @@ def encodings_comparer(all_encodings):
 
     for image in range(1, len(all_encodings)):
         for image2 in range(0, image):
-            same = all_encodings.loc[image]['person_path'] == all_encodings.loc[image2]['person_path']
-            try:
-                face_distance = face_recognition.face_distance(all_encodings.loc[image]['encodings'],
-                                                               all_encodings.loc[image2]['encodings'][0])[0]
 
-                if same:
-                    same_face_distances.append(
-                        (
-                        all_encodings.loc[image]['image_path'], all_encodings.loc[image2]['image_path'], face_distance))
-                else:
-                    different_face_distances.append(
-                        (
-                        all_encodings.loc[image]['image_path'], all_encodings.loc[image2]['image_path'], face_distance))
+            image_row = all_encodings.loc[image]
+            image2_row = all_encodings.loc[image2]
 
-            except Exception as e:
-                print(e)
+            same = image_row['person_path'] == image2_row['person_path']
+
+            face_distance = face_recognition.face_distance(image_row['encodings'],
+                                                           image2_row['encodings'][0])[0]
+
+            if same:
+                same_face_distances.append(
+                    (
+                        image_row['image_path'], image2_row['image_path'], face_distance))
+            else:
+                different_face_distances.append(
+                    (
+                        image_row['image_path'], image2_row['image_path'], face_distance))
 
             comparison_counter += 1
             if comparison_counter % 1000000 == 0:
@@ -425,7 +428,6 @@ def plotter(fig_names, cumulative, same_face_distances_df, different_face_distan
 
 def roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
             file_str_prefix):
-
     """
 
     :param same_face_distances_df:
@@ -473,7 +475,6 @@ def precision_recall(same_face_distances_df, different_face_distances_df, file_s
     precision_recall_start_time = datetime.datetime.now()
 
     if doing_precision_recall:
-
         same_face_distances = same_face_distances_df['distance']
         different_face_distances = different_face_distances_df['distance']
 
