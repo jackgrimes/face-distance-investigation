@@ -518,6 +518,39 @@ def precision_recall(same_face_distances_df, different_face_distances_df, file_s
         return precision_recall_start_time
 
 
+def select_top_unique_combos_and_output_to_csv(df, output_str, ascending, file_str_prefix):
+
+    """
+
+    :param df:
+    :param output_str:
+    :param ascending:
+    :return:
+    """
+
+    n_to_include = 20
+
+    df_sorted = df.sort_values(by=['distance'], ascending=ascending).head(1000)
+
+    df_sorted['person1'] = df_sorted['path1'].apply(os.path.dirname)
+    df_sorted['person2'] = df_sorted['path2'].apply(os.path.dirname)
+
+    df_sorted['people_set'] = df_sorted[['person1', 'person2']].apply(lambda row: str(list(set(row.tolist()))),
+                                                                      axis=1)
+
+    df_sorted.drop_duplicates(subset=['people_set'], keep='first', inplace=True)
+    df_sorted.reset_index(drop=True, inplace=True)
+    df_sorted = df_sorted.head(n_to_include)
+
+    df_sorted['index'] = pd.Series(range(1, n_to_include+1))
+    df_sorted = df_sorted[['index', 'path1', 'path2', 'distance']]
+
+    df_sorted.to_csv(file_str_prefix + output_str + '.csv',
+                              index=False)
+
+    return df_sorted
+
+
 def output_most_similar_different_people_and_most_different_same_faces(different_face_distances_df,
                                                                        same_face_distances_df, file_str_prefix):
     """
@@ -529,17 +562,14 @@ def output_most_similar_different_people_and_most_different_same_faces(different
     """
 
     # Most similar lookalikes
-
-    different_face_distances_df_sorted = different_face_distances_df.sort_values(by=['distance'], ascending=True).head(
-        500)
-    different_face_distances_df_sorted.to_csv(file_str_prefix + '_7_different_faces_looking_similar.csv',
-                                              index=False)
+    different_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(different_face_distances_df,
+                                                                                    '_7_different_faces_looking_similar',
+                                                                                    True, file_str_prefix)
 
     # Most different photos of the same person
-
-    same_face_distances_df_sorted = same_face_distances_df.sort_values(by=['distance'], ascending=False).head(500)
-    same_face_distances_df_sorted.to_csv(file_str_prefix + '_8_same_face_looking_different.csv',
-                                         index=False)
+    same_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(same_face_distances_df,
+                                                                               '_8_same_face_looking_different', False,
+                                                                               file_str_prefix)
 
     return different_face_distances_df_sorted, same_face_distances_df_sorted
 
@@ -657,13 +687,15 @@ def combine_face_images(face_images_df, file_str_prefix, image_note_str):
     face_images_df['path2'] = face_images_df['path2'].str.replace(r'\\', '/')
 
     i = 0
-    for row in face_images_df[0:50].itertuples():
+    for row in face_images_df.itertuples():
 
-        image1 = cv2.imread(row[2])
-        image2 = cv2.imread(row[1])
+        image1 = cv2.imread(row[3])
+        image2 = cv2.imread(row[2])
 
         image1 = cv2.resize(image1, (250, 250))
         image2 = cv2.resize(image2, (250, 250))
+
+        cv2.putText(image1, str(i + 1), (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
 
         this_pair = np.concatenate([image1, image2], axis=1)
 
