@@ -25,7 +25,7 @@ def main():
 
     # Make graphs
     graph_start_time = all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter, counters,
-                       file_str_prefix, doing_graphs)
+                                  file_str_prefix, doing_graphs)
 
     # Calculate precision and recall
     precision_recall_start_time = precision_recall(same_face_distances_df, different_face_distances_df, file_str_prefix,

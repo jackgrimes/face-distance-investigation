@@ -9,7 +9,8 @@ import pandas as pd
 from scipy.stats import norm
 from sklearn import metrics
 
-from configs import ALLOWED_EXTENSIONS, IMAGES_TO_EXCLUDE
+from configs import ALLOWED_EXTENSIONS, IMAGES_TO_EXCLUDE, N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE, \
+    ACTUALLY_SAME_PEOPLE
 
 
 def timesince(time, percent_done):
@@ -19,7 +20,8 @@ def timesince(time, percent_done):
     :param percent_done:
     :return:
     """
-    diff = datetime.datetime.now() - time
+    now = datetime.datetime.now()
+    diff = now - time
     days, seconds = diff.days, diff.seconds
     hours = days * 24 + seconds // 3600
     minutes = (seconds % 3600) // 60
@@ -30,11 +32,12 @@ def timesince(time, percent_done):
         remaining_hours = remaining_days * 24 + remaining_seconds // 3600
         remaining_minutes = (remaining_seconds % 3600) // 60
         remaining_seconds = remaining_seconds % 60
-        return (str(hours) + " hours, " + str(minutes) + " minutes, " + str(seconds) + " seconds taken so far" + "\n" +
-                "Estimated " + str(remaining_hours) + " hours, " + str(remaining_minutes) + " minutes, " + str(
-                    remaining_seconds) + " seconds to completion")
+        print(str(hours) + " hours, " + str(minutes) + " minutes, " + str(seconds) + " seconds taken so far")
+        print("Estimated " + str(remaining_hours) + " hours, " + str(remaining_minutes) + " minutes, " + str(
+            remaining_seconds) + " seconds to completion")
+        print("Estimated completion time: " + (time + ((now - time) / percent_done) * 100).strftime("%H:%M:%S"))
     except:
-        return "Cannot calculate times done and remaining at this time"
+        print("Cannot calculate times done and remaining at this time")
 
 
 def time_diff(time1, time2):
@@ -76,7 +79,7 @@ def print_updates_get_encodings(person, n_people, images_to_attempt, encodings_s
     print("Person number " + str(counters['person_number'] + 1) + " of " + str(n_people) + ", " + str(
         round(100 * (counters['person_number']) / n_people)) + "% complete")
     print("Scanned " + str(counters['images_attempted']) + " of " + str(images_to_attempt) + " images")
-    print(timesince(encodings_start_time, 100 * (counters['person_number']) / n_people))
+    timesince(encodings_start_time, 100 * (counters['person_number']) / n_people)
 
 
 def find_which_people_and_images_to_scan(attempting_all, base_directory, image_no_max):
@@ -155,7 +158,7 @@ def check_for_no_or_multiple_images_in_photo(encodings_all_images_this_person, i
     return image_paths_without_faces, number_faces_found_in_each_image, encodings_for_images_with_faces, paths_for_images_with_faces
 
 
-def select_right_face_encodings_from_each_image(paths_for_images_with_faces, selected_encodings_from_this_image):
+def select_right_face_encodings_from_each_image(paths_for_images_with_faces, encodings_for_images_with_faces):
     """
 
     :param paths_for_images_with_faces:
@@ -163,15 +166,19 @@ def select_right_face_encodings_from_each_image(paths_for_images_with_faces, sel
     :return:
     """
     images_with_unidentifiable_faces = []
+    selected_encodings_from_this_persons_images = []
     for i in range(len(paths_for_images_with_faces)):
-        this_image_encodings = selected_encodings_from_this_image[i]
-        if len(this_image_encodings) > 1:
-            encodings_other_images = selected_encodings_from_this_image[:i] + selected_encodings_from_this_image[
-                                                                              i + 1:]
+        this_image_encodings = encodings_for_images_with_faces[i]
+        if len(this_image_encodings) == 1:
+            selected_encodings_from_this_image = this_image_encodings
+            selected_encodings_from_this_persons_images.append(selected_encodings_from_this_image)
+        else:
+            encodings_other_images = encodings_for_images_with_faces[:i] + encodings_for_images_with_faces[
+                                                                           i + 1:]
             flattened_encodings_other_images = [item for sublist in encodings_other_images for item in sublist]
-            if len(flattened_encodings_other_images) > 0:
+            if (len(flattened_encodings_other_images) > 0) and (len(paths_for_images_with_faces) > 2):
                 this_image_face_distances_to_other_image_faces = []
-                for j, this_encoding_set in enumerate(selected_encodings_from_this_image[i]):
+                for j, this_encoding_set in enumerate(encodings_for_images_with_faces[i]):
                     distances = face_recognition.face_distance(flattened_encodings_other_images,
                                                                this_encoding_set)
                     this_image_face_distances_to_other_image_faces.append(
@@ -180,17 +187,21 @@ def select_right_face_encodings_from_each_image(paths_for_images_with_faces, sel
                     this_image_face_distances_to_other_image_faces)
                 this_image_face_distances_to_other_image_faces_df = this_image_face_distances_to_other_image_faces_df.rename(
                     columns={0: 'face', 1: 'distance'})
-                face_most_similar_to_faces_in_other_images = this_image_face_distances_to_other_image_faces_df[
+                face_most_similar_to_faces_in_other_images_index = this_image_face_distances_to_other_image_faces_df[
                     this_image_face_distances_to_other_image_faces_df['distance'] ==
                     this_image_face_distances_to_other_image_faces_df['distance'].min()][
                     'face'].values[0]
-                selected_encodings_from_this_image[i] = [
-                    selected_encodings_from_this_image[i][face_most_similar_to_faces_in_other_images]]
+                selected_encodings_from_this_image = [this_image_encodings[
+                                                          face_most_similar_to_faces_in_other_images_index]]
+                selected_encodings_from_this_persons_images.append(selected_encodings_from_this_image)
             else:
-                selected_encodings_from_this_image = []
                 print("Cannot tell which face is this persons!")
                 images_with_unidentifiable_faces.append(paths_for_images_with_faces[i])
 
+    return selected_encodings_from_this_persons_images, images_with_unidentifiable_faces, paths_for_images_with_faces
+
+
+def put_selected_encodings_into_df(selected_encodings_from_this_image, paths_for_images_with_faces, person_path):
     n_encodings_this_person = sum([len(x) for x in selected_encodings_from_this_image])
 
     if n_encodings_this_person > 0:
@@ -200,7 +211,13 @@ def select_right_face_encodings_from_each_image(paths_for_images_with_faces, sel
         this_persons_encodings['person_path'] = os.path.dirname(paths_for_images_with_faces[0])
     else:
         this_persons_encodings = pd.DataFrame()
-    return this_persons_encodings, images_with_unidentifiable_faces
+
+    # Correct person_path, where appropriate, if this person is also found elsewhere in lfw under a different name
+    if os.path.basename(person_path) in ACTUALLY_SAME_PEOPLE.keys():
+        person_path = os.path.join(os.path.dirname(person_path), ACTUALLY_SAME_PEOPLE[os.path.basename(person_path)])
+        this_persons_encodings['person_path'] = person_path
+
+    return this_persons_encodings
 
 
 def encodings_builder(base_directory, image_no_max, attempting_all):
@@ -243,8 +260,11 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
             encodings_all_images_this_person,
             images_of_this_person)
 
-        this_persons_encodings, images_with_unidentifiable_faces = select_right_face_encodings_from_each_image(
+        selected_encodings_from_this_persons_images, images_with_unidentifiable_faces, paths_for_images_with_faces = select_right_face_encodings_from_each_image(
             paths_for_images_with_faces, encodings_for_images_with_faces)
+
+        this_persons_encodings = put_selected_encodings_into_df(selected_encodings_from_this_persons_images,
+                                                                paths_for_images_with_faces, person_path)
 
         counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'].extend(
             images_with_unidentifiable_faces)
@@ -310,6 +330,16 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
     return image_no_max, attempting_all, person_count, file_str_prefix
 
 
+def perhaps_print_comparison_counter(comparison_counter, total_comparisons, comparisons_start_time):
+    if comparison_counter % 1000000 == 0:
+        print(
+            "Comparison number " + str(comparison_counter) + " of " + str(
+                round(total_comparisons)) + " (" +
+            str(round(100 * comparison_counter / total_comparisons, 2)) + "% completed). ")
+        timesince(comparisons_start_time, 100 * (comparison_counter / total_comparisons))
+        print("")
+
+
 def encodings_comparer(all_encodings):
     """
 
@@ -319,6 +349,8 @@ def encodings_comparer(all_encodings):
     comparisons_start_time = datetime.datetime.now()
     print(comparisons_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the comparisons..." + "\n")
 
+    """
+    removed this version because it took around 8 hours
     same_face_distances = []
     different_face_distances = []
     comparison_counter = 0
@@ -357,8 +389,78 @@ def encodings_comparer(all_encodings):
 
     same_face_distances_df = pd.DataFrame(same_face_distances, columns=['path1', 'path2', 'distance'])
     different_face_distances_df = pd.DataFrame(different_face_distances, columns=['path1', 'path2', 'distance'])
+    
+    """
+
+    """
+    removed this version because it led to memory fail
+    # All possible pairs of images
+    all_encodings['key'] = 0
+    all_encodings_cartesian = all_encodings.merge(all_encodings, how='left', on='key')
+
+    # Remove comparisons of same images
+    all_encodings_cartesian = all_encodings_cartesian[
+        all_encodings_cartesian['image_path_x'] != all_encodings_cartesian['image_path_y']]
+
+    # Remove duplicate combinations of images
+    all_encodings_cartesian['image_set'] = all_encodings_cartesian[['image_path_x', 'image_path_y']].apply(
+        lambda row: str(list(set(row.tolist()))), axis=1)
+    all_encodings_cartesian.drop_duplicates(subset=['image_set'], keep='first', inplace=True)
+
+    # Which of these images are of the same person?
+    all_encodings_cartesian['same_person'] = all_encodings_cartesian['person_path_x'] == all_encodings_cartesian[
+        'person_path_y']
+
+    # Calculate face distances for all combinations
+    all_encodings_cartesian['distance'] = all_encodings_cartesian.apply(
+        lambda row: face_recognition.face_distance(row['encodings_x'], row['encodings_y'][0])[0], axis=1)
+
+    # Drop unwanted columns
+    all_encodings_cartesian = all_encodings_cartesian[['image_path_x', 'image_path_y', 'same_person', 'distance']]
+
+    # Rename columns
+    all_encodings_cartesian.rename(columns={'image_path_x': 'path1',
+                                            'image_path_y': 'path2'},
+                                   inplace=True)
+
+    # Split into two dataframes - one for face distances of images of same person, another for face distances
+    # for images of different people
+    same_face_distances_df = all_encodings_cartesian[all_encodings_cartesian['same_person']]
+    different_face_distances_df = all_encodings_cartesian[~all_encodings_cartesian['same_person']]
+
+    # No need for the column same_person in these new dataframes
+    same_face_distances_df.drop(columns='same_person', inplace=True)
+    different_face_distances_df.drop(columns='same_person', inplace=True)
+    """
+
+    same_face_distances = []
+    different_face_distances = []
+    comparison_counter = 0
+    total_comparisons = (len(all_encodings) * (len(all_encodings) - 1)) / 2
+
+    all_encodings_lol = all_encodings.values.tolist()
+
+    # Looping over combinations of images, and getting face_distance for each pair
+
+    for image in range(1, len(all_encodings_lol)):
+        for image2 in range(0, image):
+
+            distance = face_recognition.face_distance(all_encodings_lol[image][2], all_encodings_lol[image2][2][0])[0]
+
+            comparison_counter += 1
+            perhaps_print_comparison_counter(comparison_counter, total_comparisons, comparisons_start_time)
+
+            same = all_encodings_lol[image][0] == all_encodings_lol[image2][0]
+
+            if same:
+                same_face_distances.append((all_encodings_lol[image][1], all_encodings_lol[image2][1], distance))
+            else:
+                different_face_distances.append((all_encodings_lol[image][1], all_encodings_lol[image2][1], distance))
 
     print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Image comparisons completed!")
+
+    same_face_distances_df = pd.DataFrame(same_face_distances, columns=['path1', 'path2', 'distance'])
+    different_face_distances_df = pd.DataFrame(different_face_distances, columns=['path1', 'path2', 'distance'])
 
     return same_face_distances_df, different_face_distances_df, comparisons_start_time, comparison_counter
 
@@ -519,7 +621,6 @@ def precision_recall(same_face_distances_df, different_face_distances_df, file_s
 
 
 def select_top_unique_combos_and_output_to_csv(df, output_str, ascending, file_str_prefix):
-
     """
 
     :param df:
@@ -527,8 +628,6 @@ def select_top_unique_combos_and_output_to_csv(df, output_str, ascending, file_s
     :param ascending:
     :return:
     """
-
-    n_to_include = 20
 
     df_sorted = df.sort_values(by=['distance'], ascending=ascending).head(1000)
 
@@ -540,13 +639,13 @@ def select_top_unique_combos_and_output_to_csv(df, output_str, ascending, file_s
 
     df_sorted.drop_duplicates(subset=['people_set'], keep='first', inplace=True)
     df_sorted.reset_index(drop=True, inplace=True)
-    df_sorted = df_sorted.head(n_to_include)
+    df_sorted = df_sorted.head(N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE)
 
-    df_sorted['index'] = pd.Series(range(1, n_to_include+1))
+    df_sorted['index'] = pd.Series(range(1, N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE + 1))
     df_sorted = df_sorted[['index', 'path1', 'path2', 'distance']]
 
     df_sorted.to_csv(file_str_prefix + output_str + '.csv',
-                              index=False)
+                     index=False)
 
     return df_sorted
 
