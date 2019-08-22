@@ -311,7 +311,7 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
 
     if attempting_all:
         print("")
-        print("Counting the images...\n")
+        print("Counting the images...")
         file_count = 0
         person_no = 0
         for _, dirs, files in os.walk(base_directory):
