@@ -14,7 +14,7 @@ from configs import results_directory
 # Which file to look at
 
 which_results = 'different_faces_looking_similar'
-which_results = 'same_face_looking_different'
+#which_results = 'same_face_looking_different'
 
 # Get the most recent file of that type, extract the paths
 

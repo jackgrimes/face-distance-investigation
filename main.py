@@ -39,8 +39,8 @@ def main():
 
     # Image of lookalikes etc
 
-    combine_face_images(different_face_distances_df_sorted, file_str_prefix, '_9_lookalikes.jpg')
-    combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_10_different_looking_same_people.jpg')
+    combine_face_images(different_face_distances_df_sorted, file_str_prefix, '_10_lookalikes.jpg')
+    combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_11_different_looking_same_people.jpg')
 
     # Write out timings and info about images that failed
     run_outputs(attempting_all, overall_start_time,

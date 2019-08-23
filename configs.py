@@ -12,6 +12,9 @@ results_directory = r"C:\dev\data\face_distance_investigation"
 # Define allowed extensions for the images to scan
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 
+# How many lookalikes and different-looking images of same person to include in outputs
+N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE = 10
+
 # Any images to exclude, because they cause problems - for example because they are duplicated with different names
 # or because the labelled person's face doesn't get recognised by face_recognition
 IMAGES_TO_EXCLUDE = [r'Ricky_Ray\Ricky_Ray_0001.jpg',
@@ -34,9 +37,6 @@ IMAGES_TO_EXCLUDE = [r'Ricky_Ray\Ricky_Ray_0001.jpg',
                      r'Mahathir_Mohamad\Mahathir_Mohamad_0009.jpg',
                      ]
 IMAGES_TO_EXCLUDE = [os.path.join(base_directory, file) for file in IMAGES_TO_EXCLUDE]
-
-# How many lookalikes and different-looking images of same person to include in outputs
-N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE = 20
 
 # Some people are mislabelled and these are examples of people who are actually the same person
 ACTUALLY_SAME_PEOPLE = {"Felipe_De_Borbon": "Prince_Felipe",

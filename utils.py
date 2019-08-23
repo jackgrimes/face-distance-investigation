@@ -481,6 +481,53 @@ def roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_
     print("")
 
 
+def do_precision_recall(same_face_distances_df, different_face_distances_df, file_str_prefix, bin_boundaries,
+                        output_filename):
+    """
+
+    :param same_face_distances_df:
+    :param different_face_distances_df:
+    :param file_str_prefix:
+    :param bin_boundaries:
+    :return:
+    """
+    same_face_distances = same_face_distances_df['distance']
+    different_face_distances = different_face_distances_df['distance']
+
+    print(
+        datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now doing precision and recall calculations...")
+    print("")
+
+    same_faces_binned = pd.DataFrame({'same_faces': same_face_distances})
+    same_faces_binned['same_faces_freq'] = pd.cut(same_faces_binned.same_faces, bin_boundaries)
+
+    different_faces_binned = pd.DataFrame({'different_faces': different_face_distances})
+    different_faces_binned['different_faces_freq'] = pd.cut(different_faces_binned.different_faces, bin_boundaries)
+
+    precision_recall_table = pd.concat([same_faces_binned.same_faces_freq.value_counts(),
+                                        different_faces_binned.different_faces_freq.value_counts()], axis=1,
+                                       sort=True)
+
+    precision_recall_table['same_faces_freq_cum'] = precision_recall_table['same_faces_freq'].cumsum() - \
+                                                    precision_recall_table['same_faces_freq']
+
+    precision_recall_table['different_faces_freq_cum'] = precision_recall_table['different_faces_freq'].cumsum() - \
+                                                         precision_recall_table['different_faces_freq']
+    precision_recall_table['different_faces_freq_anti_cum'] = sum(precision_recall_table['different_faces_freq']) - \
+                                                              precision_recall_table['different_faces_freq_cum']
+
+    precision_recall_table['cutoff'] = [
+        float(str(x).split('(')[1].split(',')[0].replace(' ', '').replace("'", "").replace(']', '')) for x in
+        list(precision_recall_table.index)]
+
+    precision_recall_table['precision'] = precision_recall_table['same_faces_freq_cum'] / (
+            precision_recall_table['same_faces_freq_cum'] + precision_recall_table['different_faces_freq_cum'])
+    precision_recall_table['recall'] = precision_recall_table['same_faces_freq_cum'] / (
+        sum(precision_recall_table['same_faces_freq']))
+
+    precision_recall_table.to_csv(file_str_prefix + output_filename)
+
+
 def precision_recall(same_face_distances_df, different_face_distances_df, file_str_prefix, doing_precision_recall):
     """
 
@@ -493,43 +540,21 @@ def precision_recall(same_face_distances_df, different_face_distances_df, file_s
     precision_recall_start_time = datetime.datetime.now()
 
     if doing_precision_recall:
-        same_face_distances = same_face_distances_df['distance']
-        different_face_distances = different_face_distances_df['distance']
 
-        print(
-            datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now doing precision and recall calculations...")
-        print("")
+        do_precision_recall(same_face_distances_df=same_face_distances_df,
+                            different_face_distances_df=different_face_distances_df,
+                            file_str_prefix=file_str_prefix,
+                            bin_boundaries=[0, 0.1] + [round(x, 2) for x in np.arange(0.2, 1.1, 0.01)] + [1.2, 1.3, 1.4,
+                                                                                                          1.5, 2],
+                            output_filename='_6_precision_recall_table.csv'
+                            )
 
-        bin_boundaries = [0, 0.1] + [round(x, 2) for x in np.arange(0.2, 1.1, 0.01)] + [1.2, 1.3, 1.4, 1.5, 2]
-
-        same_faces_binned = pd.DataFrame({'same_faces': same_face_distances})
-        same_faces_binned['same_faces_freq'] = pd.cut(same_faces_binned.same_faces, bin_boundaries)
-
-        different_faces_binned = pd.DataFrame({'different_faces': different_face_distances})
-        different_faces_binned['different_faces_freq'] = pd.cut(different_faces_binned.different_faces, bin_boundaries)
-
-        precision_recall_table = pd.concat([same_faces_binned.same_faces_freq.value_counts(),
-                                            different_faces_binned.different_faces_freq.value_counts()], axis=1,
-                                           sort=True)
-
-        precision_recall_table['same_faces_freq_cum'] = precision_recall_table['same_faces_freq'].cumsum() - \
-                                                        precision_recall_table['same_faces_freq']
-
-        precision_recall_table['different_faces_freq_cum'] = precision_recall_table['different_faces_freq'].cumsum() - \
-                                                             precision_recall_table['different_faces_freq']
-        precision_recall_table['different_faces_freq_anti_cum'] = sum(precision_recall_table['different_faces_freq']) - \
-                                                                  precision_recall_table['different_faces_freq_cum']
-
-        precision_recall_table['cutoff'] = [
-            float(str(x).split('(')[1].split(',')[0].replace(' ', '').replace("'", "").replace(']', '')) for x in
-            list(precision_recall_table.index)]
-
-        precision_recall_table['precision'] = precision_recall_table['same_faces_freq_cum'] / (
-                precision_recall_table['same_faces_freq_cum'] + precision_recall_table['different_faces_freq_cum'])
-        precision_recall_table['recall'] = precision_recall_table['same_faces_freq_cum'] / (
-            sum(precision_recall_table['same_faces_freq']))
-
-        precision_recall_table.to_csv(file_str_prefix + '_6_precision_recall_table.csv')
+        do_precision_recall(same_face_distances_df=same_face_distances_df,
+                            different_face_distances_df=different_face_distances_df,
+                            file_str_prefix=file_str_prefix,
+                            bin_boundaries=[0, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.9, 1, 1.5, 2],
+                            output_filename='_7_precision_recall_table_the_key_cutoffs.csv'
+                            )
 
         print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Precision and recall calculations completed.")
 
@@ -578,12 +603,12 @@ def output_most_similar_different_people_and_most_different_same_faces(different
 
     # Most similar lookalikes
     different_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(different_face_distances_df,
-                                                                                    '_7_different_faces_looking_similar',
+                                                                                    '_8_lookalikes',
                                                                                     True, file_str_prefix)
 
     # Most different photos of the same person
     same_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(same_face_distances_df,
-                                                                               '_8_same_face_looking_different', False,
+                                                                               '_9_different_looking_same_people', False,
                                                                                file_str_prefix)
 
     return different_face_distances_df_sorted, same_face_distances_df_sorted
@@ -636,7 +661,7 @@ def run_outputs(attempting_all, overall_start_time,
                               completion_time) + ' on calculation precision_recall_table\n\n' +
                     time_diff(overall_start_time, completion_time) + ' in total')
 
-    with open(file_str_prefix + "_11_run_notes.txt", "w") as file:
+    with open(file_str_prefix + "_12_run_notes.txt", "w") as file:
         file.write(outputs_str)
 
     print('\n' + outputs_str)
