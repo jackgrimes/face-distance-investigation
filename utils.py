@@ -260,7 +260,9 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
             encodings_all_images_this_person,
             images_of_this_person)
 
-        selected_encodings_from_this_persons_images, images_with_unidentifiable_faces, paths_for_images_with_faces = select_right_face_encodings_from_each_image(
+        (selected_encodings_from_this_persons_images,
+         images_with_unidentifiable_faces,
+         paths_for_images_with_faces) = select_right_face_encodings_from_each_image(
             paths_for_images_with_faces, encodings_for_images_with_faces)
 
         this_persons_encodings = put_selected_encodings_into_df(selected_encodings_from_this_persons_images,
@@ -275,7 +277,8 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
         counters['image_no'] += this_persons_encodings.shape[0]
         counters['images_attempted'] += len(images_of_this_person)
         counters['images_successfully_scanned'] += this_persons_encodings.shape[0]
-        counters['person_number'] += 1
+        if this_persons_encodings.shape[0] > 0:
+            counters['person_number'] += 1
 
         all_encodings = pd.concat([all_encodings, this_persons_encodings])
 
