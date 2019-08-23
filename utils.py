@@ -10,7 +10,7 @@ from scipy.stats import norm
 from sklearn import metrics
 
 from configs import ALLOWED_EXTENSIONS, IMAGES_TO_EXCLUDE, N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE, \
-    ACTUALLY_SAME_PEOPLE
+    ACTUALLY_SAME_PEOPLE, results_directory, base_directory
 
 
 def timesince(time, percent_done):
@@ -322,7 +322,7 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
     print("\n" + str(image_no_max) + " files to attempt to scan and compare")
     print("")
 
-    file_str_prefix = os.path.join(r"C:\dev\data\face_distance_investigation",
+    file_str_prefix = os.path.join(results_directory,
                                    overall_start_time.strftime("%Y_%m_%d %H_%M_%S_") + (
                                        "_attempting_all_images_" if attempting_all else ("_attempting_" + str(
                                            image_no_max) + "_images_")))
@@ -695,8 +695,8 @@ def combine_face_images(face_images_df, file_str_prefix, image_note_str):
     :param image_note_str:
     :return:
     """
-    face_images_df['path1'] = face_images_df['path1'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
-    face_images_df['path2'] = face_images_df['path2'].str.replace('../2018-11_Lookalike_finder/lfw', 'C:/dev/data/lfw')
+    face_images_df['path1'] = face_images_df['path1'].str.replace('../2018-11_Lookalike_finder/lfw', base_directory)
+    face_images_df['path2'] = face_images_df['path2'].str.replace('../2018-11_Lookalike_finder/lfw', base_directory)
 
     face_images_df['path1'] = face_images_df['path1'].str.replace(r'\\', '/')
     face_images_df['path2'] = face_images_df['path2'].str.replace(r'\\', '/')

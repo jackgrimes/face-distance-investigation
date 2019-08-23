@@ -6,10 +6,14 @@ doing_precision_recall = True
 # Provide path to faces dataset
 base_directory = r'C:\dev\data\lfw'
 
+# Results directory
+results_directory = r"C:\dev\data\face_distance_investigation"
+
 # Define allowed extensions for the images to scan
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 
 # Any images to exclude, because they cause problems - for example because they are duplicated with different names
+# or because the labelled person's face doesn't get recognised by face_recognition
 IMAGES_TO_EXCLUDE = [r'Ricky_Ray\Ricky_Ray_0001.jpg',
                      r'Bart_Hendricks\Bart_Hendricks_0001.jpg',
                      r'Raul_Ibanez\Raul_Ibanez_0001.jpg',
@@ -23,6 +27,11 @@ IMAGES_TO_EXCLUDE = [r'Ricky_Ray\Ricky_Ray_0001.jpg',
                      r'Vecdi_Gonul\Vecdi_Gonul_0001.jpg',
                      r'Abdullah_Gul\Abdullah_Gul_0012.jpg',
                      r'Morgan_Hentzen\Morgan_Hentzen_0001.jpg',
+                     r'Colin_Powell\Colin_Powell_0206.jpg',
+                     r'Tung_Chee-hwa\Tung_Chee-hwa_0001.jpg',
+                     r'Mahmoud_Abbas\Mahmoud_Abbas_0021.jpg',
+                     r'Hans_Blix\Hans_Blix_0026.jpg',
+                     r'Mahathir_Mohamad\Mahathir_Mohamad_0009.jpg',
                      ]
 IMAGES_TO_EXCLUDE = [os.path.join(base_directory, file) for file in IMAGES_TO_EXCLUDE]
 
