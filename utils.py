@@ -638,18 +638,18 @@ def run_outputs(attempting_all, overall_start_time,
     outputs_str = ""
 
     outputs_str += ("attempting_all was " + str(attempting_all) + "\n")
-
-    outputs_str += (str(counters['image_no']) + " images attempted.\n")
+    outputs_str += (str(counters['image_no']) + " photos of " + str(counters['person_number']) + "compared.\n")
     outputs_str += ("Faces not found in " + str(len(counters['photos_with_no_faces_found_paths'])) + " images.\n")
+    outputs_str += ("Number of images excluded because the wrong face gets picked, etc: " + str(len(IMAGES_TO_EXCLUDE)) + "\n")
     outputs_str += ("Not sure which face to pick in " + str(
         len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'])) + " images.\n\n")
 
-    if (len(counters['photos_with_no_faces_found_paths']) > 0):
+    if len(counters['photos_with_no_faces_found_paths']) > 0:
         outputs_str += ("Images without faces:\n\n" +
                         "\n".join(counters['photos_with_no_faces_found_paths']) +
                         "\n\n")
 
-    if (len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) > 0):
+    if len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) > 0:
         outputs_str += ("Images where not sure which face to pick:\n\n" +
                         "\n".join(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) +
                         "\n\n")
@@ -658,7 +658,7 @@ def run_outputs(attempting_all, overall_start_time,
         outputs_str += ("Images excluded because the wrong face gets picked, etc:\n\n" +
                         "\n".join(IMAGES_TO_EXCLUDE) +
                         "\n\n")
-        
+
     outputs_str += ("Summary of time taken:\n\n" +
                     time_diff(overall_start_time,
                               encodings_start_time) + ' on initial prep, counting pictures etc\n' +
