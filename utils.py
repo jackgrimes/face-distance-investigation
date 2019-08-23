@@ -654,6 +654,11 @@ def run_outputs(attempting_all, overall_start_time,
                         "\n".join(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) +
                         "\n\n")
 
+    if len(IMAGES_TO_EXCLUDE) > 0:
+        outputs_str += ("Images excluded because the wrong face gets picked, etc:\n\n" +
+                        "\n".join(IMAGES_TO_EXCLUDE) +
+                        "\n\n")
+        
     outputs_str += ("Summary of time taken:\n\n" +
                     time_diff(overall_start_time,
                               encodings_start_time) + ' on initial prep, counting pictures etc\n' +
