@@ -243,7 +243,8 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
                 'photos_with_multiple_faces_and_no_other_images_to_compare_with_count': 0,
                 'photos_with_multiple_faces_and_no_other_images_to_compare_with': [],
                 'photos_with_no_faces_found_count': 0,
-                'photos_with_no_faces_found_paths': []}
+                'photos_with_no_faces_found_paths': [],
+                'all_images_scan_attempted': []}
 
     for person_number, person in enumerate(people):
         person_path = os.path.join(base_directory, person)
@@ -281,6 +282,8 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
             counters['person_number'] += 1
 
         all_encodings = pd.concat([all_encodings, this_persons_encodings])
+
+        counters['all_images_scan_attempted'].append(paths_for_images_with_faces)
 
         print("")
 
@@ -325,7 +328,7 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
     print("\n" + str(image_no_max) + " files to attempt to scan and compare")
     print("")
 
-    file_str_prefix = os.path.join(results_directory,
+    file_str_prefix = os.path.join(os.path.join(results_directory, 'face_distance_results'),
                                    overall_start_time.strftime("%Y_%m_%d %H_%M_%S_") + (
                                        "_attempting_all_images_" if attempting_all else ("_attempting_" + str(
                                            image_no_max) + "_images_")))
@@ -549,14 +552,14 @@ def precision_recall(same_face_distances_df, different_face_distances_df, file_s
                             file_str_prefix=file_str_prefix,
                             bin_boundaries=[0, 0.1] + [round(x, 2) for x in np.arange(0.2, 1.1, 0.01)] + [1.2, 1.3, 1.4,
                                                                                                           1.5, 2],
-                            output_filename='_6_precision_recall_table.csv'
+                            output_filename='_5_precision_recall_table.csv'
                             )
 
         do_precision_recall(same_face_distances_df=same_face_distances_df,
                             different_face_distances_df=different_face_distances_df,
                             file_str_prefix=file_str_prefix,
                             bin_boundaries=[0, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.9, 1, 1.5, 2],
-                            output_filename='_7_precision_recall_table_the_key_cutoffs.csv'
+                            output_filename='_6_precision_recall_table_the_key_cutoffs.csv'
                             )
 
         print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Precision and recall calculations completed.")
@@ -606,12 +609,12 @@ def output_most_similar_different_people_and_most_different_same_faces(different
 
     # Most similar lookalikes
     different_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(different_face_distances_df,
-                                                                                    '_8_lookalikes',
+                                                                                    '_7_lookalikes',
                                                                                     True, file_str_prefix)
 
     # Most different photos of the same person
     same_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(same_face_distances_df,
-                                                                               '_9_different_looking_same_people', False,
+                                                                               '_8_different_looking_same_people', False,
                                                                                file_str_prefix)
 
     return different_face_distances_df_sorted, same_face_distances_df_sorted
@@ -640,7 +643,8 @@ def run_outputs(attempting_all, overall_start_time,
     outputs_str += ("attempting_all was " + str(attempting_all) + "\n")
     outputs_str += (str(counters['image_no']) + " photos of " + str(counters['person_number']) + " people compared.\n")
     outputs_str += ("Faces not found in " + str(len(counters['photos_with_no_faces_found_paths'])) + " images.\n")
-    outputs_str += ("Number of images excluded because the wrong face gets picked, etc: " + str(len(IMAGES_TO_EXCLUDE)) + "\n")
+    images_to_exclude_in_this_run = [image for image in IMAGES_TO_EXCLUDE if image in counters['all_images_scan_attempted']]
+    outputs_str += ("Number of images excluded because the wrong face gets picked, etc: " + str(len(images_to_exclude_in_this_run)) + "\n")
     outputs_str += ("Not sure which face to pick in " + str(
         len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'])) + " images.\n\n")
 
@@ -654,9 +658,9 @@ def run_outputs(attempting_all, overall_start_time,
                         "\n".join(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) +
                         "\n\n")
 
-    if len(IMAGES_TO_EXCLUDE) > 0:
+    if (len(IMAGES_TO_EXCLUDE) > 0) and (len(images_to_exclude_in_this_run) > 0):
         outputs_str += ("Images excluded because the wrong face gets picked, etc:\n\n" +
-                        "\n".join(IMAGES_TO_EXCLUDE) +
+                        "\n".join(images_to_exclude_in_this_run) +
                         "\n\n")
 
     outputs_str += ("Summary of time taken:\n\n" +
@@ -669,7 +673,7 @@ def run_outputs(attempting_all, overall_start_time,
                               completion_time) + ' on calculation precision_recall_table\n\n' +
                     time_diff(overall_start_time, completion_time) + ' in total')
 
-    with open(file_str_prefix + "_12_run_notes.txt", "w") as file:
+    with open(file_str_prefix + "_11_run_notes.txt", "w") as file:
         file.write(outputs_str)
 
     print('\n' + outputs_str)
@@ -678,7 +682,7 @@ def run_outputs(attempting_all, overall_start_time,
 
 
 def all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter, counters,
-               file_str_prefix, doing_graphs):
+               file_str_prefix, doing_graphs, DOING_ROC_AUC):
     """
 
     :param same_face_distances_df:
@@ -713,9 +717,9 @@ def all_graphs(same_face_distances_df, different_face_distances_df, comparison_c
             image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
 
         # ROC and AUC
-
-        roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
-                file_str_prefix)
+        if DOING_ROC_AUC:
+            roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
+                    file_str_prefix)
 
         return graph_start_time
 

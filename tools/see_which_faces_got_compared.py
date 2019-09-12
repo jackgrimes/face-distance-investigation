@@ -13,14 +13,15 @@ from configs import results_directory
 
 # Which file to look at
 
-which_results = 'different_faces_looking_similar'
-#which_results = 'same_face_looking_different'
+which_results = 'lookalikes.csv'
+# which_results = 'different_looking_same_people.csv'
 
 # Get the most recent file of that type, extract the paths
 
-all_results_files = os.listdir(results_directory)
+all_results_files = os.listdir(os.path.join(results_directory, 'face_distance_results'))
 most_recent_results_file_of_specified_type = [i for i in all_results_files if (which_results in i)][-1]
-full_path = os.path.join(results_directory, most_recent_results_file_of_specified_type)
+full_path = os.path.join(os.path.join(results_directory, 'face_distance_results'),
+                         most_recent_results_file_of_specified_type)
 paths_df = pd.read_csv(full_path)[['path1', 'path2']]
 paths_list = paths_df.values.tolist()
 
