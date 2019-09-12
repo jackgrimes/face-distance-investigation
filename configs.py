@@ -12,7 +12,6 @@ results_directory = r"C:\dev\data\face_distance_investigation"
 # Define allowed extensions for the images to scan
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 
-
 # Cumulative or normal graphs of face distances?
 CUMULATIVE_GRAPHS = False
 
