@@ -12,8 +12,9 @@ results_directory = r"C:\dev\data\face_distance_investigation"
 # Define allowed extensions for the images to scan
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 
-# Make the ROC_AUC graph?
-DOING_ROC_AUC = True
+
+# Cumulative or normal graphs of face distances?
+CUMULATIVE_GRAPHS = True
 
 # How many lookalikes and different-looking images of same person to include in outputs
 N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE = 10

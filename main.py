@@ -1,9 +1,9 @@
 import datetime
 
-from configs import doing_graphs, doing_precision_recall, base_directory, DOING_ROC_AUC
+from configs import doing_graphs, doing_precision_recall, base_directory, CUMULATIVE_GRAPHS
 from utils import encodings_builder, get_number_faces_to_scan, encodings_comparer, \
     precision_recall, run_outputs, output_most_similar_different_people_and_most_different_same_faces, \
-    all_graphs, combine_face_images
+    all_graphs, combine_face_images, plot_first_names_wordcloud
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
 
     # Make graphs
     graph_start_time = all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter, counters,
-                                  file_str_prefix, doing_graphs, DOING_ROC_AUC)
+                                  file_str_prefix, doing_graphs, CUMULATIVE_GRAPHS)
 
     # Calculate precision and recall
     precision_recall_start_time = precision_recall(same_face_distances_df, different_face_distances_df, file_str_prefix,
@@ -38,9 +38,11 @@ def main():
         same_face_distances_df, file_str_prefix)
 
     # Image of lookalikes etc
+    combine_face_images(different_face_distances_df_sorted, file_str_prefix, '_8_lookalikes.jpg')
+    combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_9_different_looking_same_people.jpg')
 
-    combine_face_images(different_face_distances_df_sorted, file_str_prefix, '_9_lookalikes.jpg')
-    combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_10_different_looking_same_people.jpg')
+    # First names wordcloud
+    plot_first_names_wordcloud(base_directory, file_str_prefix)
 
     # Write out timings and info about images that failed
     run_outputs(attempting_all, overall_start_time,

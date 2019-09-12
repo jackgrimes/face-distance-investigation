@@ -6,11 +6,14 @@ import face_recognition
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.misc import imsave
 from scipy.stats import norm
 from sklearn import metrics
+from wordcloud import WordCloud
 
 from configs import ALLOWED_EXTENSIONS, IMAGES_TO_EXCLUDE, N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE, \
-    ACTUALLY_SAME_PEOPLE, results_directory, base_directory
+    ACTUALLY_SAME_PEOPLE
+from configs import base_directory, results_directory
 
 
 def timesince(time, percent_done):
@@ -328,7 +331,7 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
     print("\n" + str(image_no_max) + " files to attempt to scan and compare")
     print("")
 
-    file_str_prefix = os.path.join(os.path.join(results_directory, 'face_distance_results'),
+    file_str_prefix = os.path.join(results_directory,
                                    overall_start_time.strftime("%Y_%m_%d %H_%M_%S_") + (
                                        "_attempting_all_images_" if attempting_all else ("_attempting_" + str(
                                            image_no_max) + "_images_")))
@@ -482,7 +485,7 @@ def roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_
              str(comparison_counter) + " comparisons of \n" + str(counters['image_no']) + " images of \n " + str(
                  counters['person_number']) + " people",
              ha='center', va='center', transform=ax.transAxes)
-    fig.savefig(file_str_prefix + r'_5_ROC.png')
+    fig.savefig(file_str_prefix + r'_3_ROC.png')
     print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Graphs completed.")
     print("")
 
@@ -546,20 +549,19 @@ def precision_recall(same_face_distances_df, different_face_distances_df, file_s
     precision_recall_start_time = datetime.datetime.now()
 
     if doing_precision_recall:
-
         do_precision_recall(same_face_distances_df=same_face_distances_df,
                             different_face_distances_df=different_face_distances_df,
                             file_str_prefix=file_str_prefix,
                             bin_boundaries=[0, 0.1] + [round(x, 2) for x in np.arange(0.2, 1.1, 0.01)] + [1.2, 1.3, 1.4,
                                                                                                           1.5, 2],
-                            output_filename='_5_precision_recall_table.csv'
+                            output_filename='_4_precision_recall_table.csv'
                             )
 
         do_precision_recall(same_face_distances_df=same_face_distances_df,
                             different_face_distances_df=different_face_distances_df,
                             file_str_prefix=file_str_prefix,
                             bin_boundaries=[0, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.9, 1, 1.5, 2],
-                            output_filename='_6_precision_recall_table_the_key_cutoffs.csv'
+                            output_filename='_5_precision_recall_table_the_key_cutoffs.csv'
                             )
 
         print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Precision and recall calculations completed.")
@@ -609,12 +611,13 @@ def output_most_similar_different_people_and_most_different_same_faces(different
 
     # Most similar lookalikes
     different_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(different_face_distances_df,
-                                                                                    '_7_lookalikes',
+                                                                                    '_6_lookalikes',
                                                                                     True, file_str_prefix)
 
     # Most different photos of the same person
     same_face_distances_df_sorted = select_top_unique_combos_and_output_to_csv(same_face_distances_df,
-                                                                               '_8_different_looking_same_people', False,
+                                                                               '_7_different_looking_same_people',
+                                                                               False,
                                                                                file_str_prefix)
 
     return different_face_distances_df_sorted, same_face_distances_df_sorted
@@ -643,8 +646,10 @@ def run_outputs(attempting_all, overall_start_time,
     outputs_str += ("attempting_all was " + str(attempting_all) + "\n")
     outputs_str += (str(counters['image_no']) + " photos of " + str(counters['person_number']) + " people compared.\n")
     outputs_str += ("Faces not found in " + str(len(counters['photos_with_no_faces_found_paths'])) + " images.\n")
-    images_to_exclude_in_this_run = [image for image in IMAGES_TO_EXCLUDE if image in counters['all_images_scan_attempted']]
-    outputs_str += ("Number of images excluded because the wrong face gets picked, etc: " + str(len(images_to_exclude_in_this_run)) + "\n")
+    images_to_exclude_in_this_run = [image for image in IMAGES_TO_EXCLUDE if
+                                     image in counters['all_images_scan_attempted']]
+    outputs_str += ("Number of images excluded because the wrong face gets picked, etc: " + str(
+        len(images_to_exclude_in_this_run)) + "\n")
     outputs_str += ("Not sure which face to pick in " + str(
         len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'])) + " images.\n\n")
 
@@ -682,7 +687,7 @@ def run_outputs(attempting_all, overall_start_time,
 
 
 def all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter, counters,
-               file_str_prefix, doing_graphs, DOING_ROC_AUC):
+               file_str_prefix, doing_graphs, CUMULATIVE_GRAPHS):
     """
 
     :param same_face_distances_df:
@@ -700,26 +705,23 @@ def all_graphs(same_face_distances_df, different_face_distances_df, comparison_c
         print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making the graphs...")
         print("")
 
-        # Non-cumulative histograms
+        if CUMULATIVE_GRAPHS:
 
-        ax = plotter(
-            fig_names=('_1_distributions_same_diff_distances', '_2_distributions_same_diff_distances_with_norm'),
-            cumulative=False, same_face_distances_df=same_face_distances_df,
-            different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
-            image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
+            ax = plotter(fig_names=(
+                '_1_distributions_same_diff_distances_cum', '_2_distributions_same_diff_distances_with_norm_cum'),
+                cumulative=1, same_face_distances_df=same_face_distances_df,
+                different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
+                image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
 
-        # Cumulative histograms
+        else:
+            ax = plotter(
+                fig_names=('_1_distributions_same_diff_distances', '_2_distributions_same_diff_distances_with_norm'),
+                cumulative=False, same_face_distances_df=same_face_distances_df,
+                different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
+                image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
 
-        ax = plotter(fig_names=(
-            '_3_distributions_same_diff_distances_cum', '_4_distributions_same_diff_distances_with_norm_cum'),
-            cumulative=1, same_face_distances_df=same_face_distances_df,
-            different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
-            image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
-
-        # ROC and AUC
-        if DOING_ROC_AUC:
-            roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
-                    file_str_prefix)
+        roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
+                file_str_prefix)
 
         return graph_start_time
 
@@ -761,3 +763,22 @@ def combine_face_images(face_images_df, file_str_prefix, image_note_str):
 
     cv2.imwrite(os.path.join(os.path.join(file_str_prefix + image_note_str)),
                 all_images)
+
+
+def plot_first_names_wordcloud(base_directory, file_str_prefix):
+    """
+
+    :param base_directory:
+    :return:
+    """
+    print("\n" + datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making names wordcloud..." + "\n")
+
+    names = [item for sublist in [x.split("_") for x in os.listdir(base_directory)] for item in sublist]
+    names = [name.lower() for name in names]
+    names = [name.capitalize() for name in names]
+
+    names_string = " ".join(names)
+    wordcloud = WordCloud(max_words=1000, width=1800, height=600).generate(names_string)
+
+    filename = file_str_prefix + '_10_names_wordcloud.jpg'
+    imsave(os.path.join(results_directory, filename), wordcloud)
