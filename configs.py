@@ -14,7 +14,7 @@ ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 
 
 # Cumulative or normal graphs of face distances?
-CUMULATIVE_GRAPHS = True
+CUMULATIVE_GRAPHS = False
 
 # How many lookalikes and different-looking images of same person to include in outputs
 N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE = 10
