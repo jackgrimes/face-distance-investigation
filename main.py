@@ -14,7 +14,9 @@ def main():
                                                                                            overall_start_time)
 
     # Build up encodings dataset
-    all_encodings, encodings_start_time, counters = encodings_builder(base_directory, image_no_max, attempting_all)
+    all_encodings, encodings_start_time, counters, all_peoples_first_names = encodings_builder(base_directory,
+                                                                                               image_no_max,
+                                                                                               attempting_all)
 
     # Compare the encodings
     (same_face_distances_df,
@@ -42,7 +44,7 @@ def main():
     combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_9_different_looking_same_people.jpg')
 
     # First names wordcloud
-    plot_first_names_wordcloud(base_directory, file_str_prefix)
+    plot_first_names_wordcloud(file_str_prefix, all_peoples_first_names)
 
     # Write out timings and info about images that failed
     run_outputs(attempting_all, overall_start_time,

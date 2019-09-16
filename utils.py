@@ -212,15 +212,17 @@ def put_selected_encodings_into_df(selected_encodings_from_this_image, paths_for
             list(zip(paths_for_images_with_faces, selected_encodings_from_this_image)))
         this_persons_encodings.columns = ['image_path', 'encodings']
         this_persons_encodings['person_path'] = os.path.dirname(paths_for_images_with_faces[0])
+        this_persons_first_name = os.path.basename(person_path).split('_')[0]
     else:
         this_persons_encodings = pd.DataFrame()
+        this_persons_first_name = ''
 
     # Correct person_path, where appropriate, if this person is also found elsewhere in lfw under a different name
     if os.path.basename(person_path) in ACTUALLY_SAME_PEOPLE.keys():
         person_path = os.path.join(os.path.dirname(person_path), ACTUALLY_SAME_PEOPLE[os.path.basename(person_path)])
         this_persons_encodings['person_path'] = person_path
 
-    return this_persons_encodings
+    return this_persons_encodings, this_persons_first_name
 
 
 def encodings_builder(base_directory, image_no_max, attempting_all):
@@ -249,6 +251,8 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
                 'photos_with_no_faces_found_paths': [],
                 'all_images_scan_attempted': []}
 
+    all_peoples_first_names = []
+
     for person_number, person in enumerate(people):
         person_path = os.path.join(base_directory, person)
 
@@ -269,8 +273,10 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
          paths_for_images_with_faces) = select_right_face_encodings_from_each_image(
             paths_for_images_with_faces, encodings_for_images_with_faces)
 
-        this_persons_encodings = put_selected_encodings_into_df(selected_encodings_from_this_persons_images,
+        this_persons_encodings, this_persons_first_name = put_selected_encodings_into_df(selected_encodings_from_this_persons_images,
                                                                 paths_for_images_with_faces, person_path)
+
+        all_peoples_first_names.append(this_persons_first_name)
 
         counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'].extend(
             images_with_unidentifiable_faces)
@@ -290,10 +296,12 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
 
         print("")
 
+    all_peoples_first_names = [name for name in all_peoples_first_names if (name != '')]
+
     all_encodings = all_encodings.reset_index(drop=True)
     all_encodings = all_encodings[['person_path', 'image_path', 'encodings']]
 
-    return all_encodings, encodings_start_time, counters
+    return all_encodings, encodings_start_time, counters, all_peoples_first_names
 
 
 def get_number_faces_to_scan(base_directory, overall_start_time):
@@ -765,7 +773,7 @@ def combine_face_images(face_images_df, file_str_prefix, image_note_str):
                 all_images)
 
 
-def plot_first_names_wordcloud(base_directory, file_str_prefix):
+def plot_first_names_wordcloud(file_str_prefix, all_peoples_first_names):
     """
 
     :param base_directory:
@@ -773,12 +781,10 @@ def plot_first_names_wordcloud(base_directory, file_str_prefix):
     """
     print("\n" + datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making names wordcloud..." + "\n")
 
-    names = [item for sublist in [x.split("_") for x in os.listdir(base_directory)] for item in sublist]
-    names = [name.lower() for name in names]
-    names = [name.capitalize() for name in names]
+    names = [name.lower().capitalize() for name in all_peoples_first_names]
 
     names_string = " ".join(names)
-    wordcloud = WordCloud(max_words=1000, width=1800, height=600).generate(names_string)
+    wordcloud = WordCloud(max_words=1000, width=1800, height=600, collocations=False).generate(names_string)
 
     filename = file_str_prefix + '_10_names_wordcloud.jpg'
     imsave(os.path.join(results_directory, filename), wordcloud)
