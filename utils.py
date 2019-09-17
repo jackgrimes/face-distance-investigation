@@ -180,7 +180,7 @@ def select_right_face_encodings_from_each_image(paths_for_images_with_faces, enc
                 this_image_face_distances_to_other_image_faces = []
                 for j, this_encoding_set in enumerate(encodings_for_images_with_faces[i]):
                     distances = face_recognition.face_distance(flattened_encodings_other_images,
-                                                               this_encoding_set[1])
+                                                               this_encoding_set)
                     this_image_face_distances_to_other_image_faces.append(
                         [j, sum(distances.T.tolist()) / len(distances.T.tolist())])
                 this_image_face_distances_to_other_image_faces_df = pd.DataFrame(
