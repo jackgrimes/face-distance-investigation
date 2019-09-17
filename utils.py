@@ -68,7 +68,7 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def print_updates_get_encodings(person, n_people, images_to_attempt, encodings_start_time, counters):
+def print_updates_get_encodings(person, number_of_people_to_scan, encodings_start_time, counters):
     """
     So that the user knows roughly how long it will take to finish getting the face encodings
     :param person:
@@ -78,11 +78,10 @@ def print_updates_get_encodings(person, n_people, images_to_attempt, encodings_s
     :param counters:
     :return:
     """
-    print("Getting face encodings for images of " + person)
-    print("Person number " + str(counters['person_number'] + 1) + " of " + str(n_people) + ", " + str(
-        round(100 * (counters['person_number']) / n_people)) + "% complete")
-    print("Scanned " + str(counters['images_attempted']) + " of " + str(images_to_attempt) + " images")
-    timesince(encodings_start_time, 100 * (counters['person_number']) / n_people)
+    print("Getting face encodings for images of " + os.path.basename(person))
+    print("Person number " + str(counters['people_attempted']) + " of " + str(number_of_people_to_scan) + ", " + str(
+        round(100 * (counters['people_attempted'] - 1) / number_of_people_to_scan)) + "% complete")
+    timesince(encodings_start_time, 100 * (counters['people_attempted'] - 1) / number_of_people_to_scan)
 
 
 def find_which_people_and_images_to_scan(attempting_all, base_directory, image_no_max):
@@ -114,7 +113,7 @@ def find_which_people_and_images_to_scan(attempting_all, base_directory, image_n
     return people, images_to_attempt, n_people
 
 
-def get_this_persons_encodings(person_path, image_no_max, counters):
+def get_this_persons_encodings(person_path, IMAGES_TO_EXCLUDE):
     """
 
     :param person_path:
@@ -123,19 +122,17 @@ def get_this_persons_encodings(person_path, image_no_max, counters):
     images_of_this_person = [os.path.join(person_path, file) for file in os.listdir(person_path) if
                              (".db" not in file)]
 
-    images_of_this_person = [image for image in images_of_this_person if (image not in IMAGES_TO_EXCLUDE)]
+    images_this_person_in_IMAGES_TO_EXCLUDE = [image for image in images_of_this_person if (image in IMAGES_TO_EXCLUDE)]
+    images_this_person_not_in_IMAGES_TO_EXCLUDE = [image for image in images_of_this_person if
+                                                   (image not in IMAGES_TO_EXCLUDE)]
 
-    face_rec_loaded_images_of_this_person = [face_recognition.load_image_file(image) for image in
-                                             images_of_this_person]
-    encodings_all_images_this_person = [face_recognition.face_encodings(loaded_image) for loaded_image in
-                                        face_rec_loaded_images_of_this_person]
+    face_rec_loaded_images_of_this_person = [[image, face_recognition.load_image_file(image)] for image in
+                                             images_this_person_not_in_IMAGES_TO_EXCLUDE]
+    encodings_images_this_person_not_in_IMAGES_TO_EXCLUDE = [[image[0], face_recognition.face_encodings(image[1])] for
+                                                             image in
+                                                             face_rec_loaded_images_of_this_person]
 
-    if (counters['images_successfully_scanned'] + len(encodings_all_images_this_person)) > image_no_max:
-        n_to_remove = (counters['images_successfully_scanned'] + len(encodings_all_images_this_person)) - image_no_max
-        encodings_all_images_this_person = encodings_all_images_this_person[0:-n_to_remove]
-        images_of_this_person = images_of_this_person[0:-n_to_remove]
-
-    return encodings_all_images_this_person, images_of_this_person
+    return encodings_images_this_person_not_in_IMAGES_TO_EXCLUDE, images_this_person_not_in_IMAGES_TO_EXCLUDE, images_this_person_in_IMAGES_TO_EXCLUDE
 
 
 def check_for_no_or_multiple_images_in_photo(encodings_all_images_this_person, images_of_this_person):
@@ -145,14 +142,14 @@ def check_for_no_or_multiple_images_in_photo(encodings_all_images_this_person, i
     :param images_of_this_person:
     :return:
     """
-    number_faces_found_in_each_image = [len(encodings_list) for encodings_list in
+    number_faces_found_in_each_image = [len(encodings_list[1]) for encodings_list in
                                         encodings_all_images_this_person]
     images_without_faces = [(number == 0) for number in number_faces_found_in_each_image]
 
     image_paths_without_faces = [images_of_this_person[i] for i in range(len(images_of_this_person)) if
                                  images_without_faces[i]]
 
-    encodings_for_images_with_faces = [encodings_all_images_this_person[i] for i in
+    encodings_for_images_with_faces = [encodings_all_images_this_person[i][1] for i in
                                        range(len(images_of_this_person)) if
                                        (not images_without_faces[i])]
     paths_for_images_with_faces = [images_of_this_person[i] for i in range(len(images_of_this_person)) if
@@ -176,14 +173,14 @@ def select_right_face_encodings_from_each_image(paths_for_images_with_faces, enc
             selected_encodings_from_this_image = this_image_encodings
             selected_encodings_from_this_persons_images.append(selected_encodings_from_this_image)
         else:
-            encodings_other_images = encodings_for_images_with_faces[:i] + encodings_for_images_with_faces[
-                                                                           i + 1:]
+            encodings_other_images = [x for x in encodings_for_images_with_faces[:i] + encodings_for_images_with_faces[
+                                                                                       i + 1:]]
             flattened_encodings_other_images = [item for sublist in encodings_other_images for item in sublist]
             if (len(flattened_encodings_other_images) > 0) and (len(paths_for_images_with_faces) > 2):
                 this_image_face_distances_to_other_image_faces = []
                 for j, this_encoding_set in enumerate(encodings_for_images_with_faces[i]):
                     distances = face_recognition.face_distance(flattened_encodings_other_images,
-                                                               this_encoding_set)
+                                                               this_encoding_set[1])
                     this_image_face_distances_to_other_image_faces.append(
                         [j, sum(distances.T.tolist()) / len(distances.T.tolist())])
                 this_image_face_distances_to_other_image_faces_df = pd.DataFrame(
@@ -225,7 +222,10 @@ def put_selected_encodings_into_df(selected_encodings_from_this_image, paths_for
     return this_persons_encodings, this_persons_first_name
 
 
-def encodings_builder(base_directory, image_no_max, attempting_all):
+def encodings_builder(base_directory,
+                      number_of_people_to_scan,
+                      peoples_faces_to_scan,
+                      IMAGES_TO_EXCLUDE):
     """
 
     :param base_directory:
@@ -234,74 +234,74 @@ def encodings_builder(base_directory, image_no_max, attempting_all):
     :return:
     """
     encodings_start_time = datetime.datetime.now()
-    print(encodings_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the encodings..." + "\n")
-
-    people, images_to_attempt, n_people = find_which_people_and_images_to_scan(attempting_all, base_directory,
-                                                                               image_no_max)
+    print("\n" + encodings_start_time.strftime("%Y_%m_%d__%H:%M:%S") + " Doing the encodings..." + "\n")
 
     all_encodings = pd.DataFrame()
 
-    counters = {'images_attempted': 0,
-                'image_no': 0,
-                'person_number': 0,
-                'images_successfully_scanned': 0,
-                'photos_with_multiple_faces_and_no_other_images_to_compare_with_count': 0,
+    counters = {'images_attempted': [],
                 'photos_with_multiple_faces_and_no_other_images_to_compare_with': [],
-                'photos_with_no_faces_found_count': 0,
                 'photos_with_no_faces_found_paths': [],
-                'all_images_scan_attempted': []}
+                'IMAGES_TO_EXCLUDE_excluded': [],
+                'all_peoples_first_names': [],
+                'people_with_encodings': 0,
+                'images_successfully_scanned': 0,
+                'people_attempted': 0,
+                }
 
-    all_peoples_first_names = []
+    for person_number, person in enumerate(peoples_faces_to_scan):
 
-    for person_number, person in enumerate(people):
+        counters['people_attempted'] += 1
+
         person_path = os.path.join(base_directory, person)
 
-        print_updates_get_encodings(person, n_people, images_to_attempt, encodings_start_time, counters)
+        print_updates_get_encodings(person, number_of_people_to_scan, encodings_start_time, counters)
 
-        encodings_all_images_this_person, images_of_this_person = get_this_persons_encodings(person_path, image_no_max,
-                                                                                             counters)
+        (encodings_images_this_person_not_in_IMAGES_TO_EXCLUDE,
+         images_this_person_not_in_IMAGES_TO_EXCLUDE,
+         images_this_person_in_IMAGES_TO_EXCLUDE) = get_this_persons_encodings(person_path,
+                                                                               IMAGES_TO_EXCLUDE)
+
+        counters['images_attempted'].extend(encodings_images_this_person_not_in_IMAGES_TO_EXCLUDE)
+        counters['IMAGES_TO_EXCLUDE_excluded'].extend(images_this_person_in_IMAGES_TO_EXCLUDE)
 
         (image_paths_without_faces,
          number_faces_found_in_each_image,
          encodings_for_images_with_faces,
          paths_for_images_with_faces) = check_for_no_or_multiple_images_in_photo(
-            encodings_all_images_this_person,
-            images_of_this_person)
+            encodings_images_this_person_not_in_IMAGES_TO_EXCLUDE,
+            images_this_person_not_in_IMAGES_TO_EXCLUDE)
+
+        counters['photos_with_no_faces_found_paths'].extend(image_paths_without_faces)
 
         (selected_encodings_from_this_persons_images,
          images_with_unidentifiable_faces,
          paths_for_images_with_faces) = select_right_face_encodings_from_each_image(
             paths_for_images_with_faces, encodings_for_images_with_faces)
 
-        this_persons_encodings, this_persons_first_name = put_selected_encodings_into_df(selected_encodings_from_this_persons_images,
-                                                                paths_for_images_with_faces, person_path)
-
-        all_peoples_first_names.append(this_persons_first_name)
-
         counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'].extend(
             images_with_unidentifiable_faces)
-        counters['photos_with_multiple_faces_and_no_other_images_to_compare_with_count'] += len(
-            images_with_unidentifiable_faces)
-        counters['photos_with_no_faces_found_count'] += len(image_paths_without_faces)
-        counters['photos_with_no_faces_found_paths'].extend(image_paths_without_faces)
-        counters['image_no'] += this_persons_encodings.shape[0]
-        counters['images_attempted'] += len(images_of_this_person)
+
+        (this_persons_encodings,
+         this_persons_first_name) = put_selected_encodings_into_df(selected_encodings_from_this_persons_images,
+                                                                   paths_for_images_with_faces, person_path)
+
+        counters['all_peoples_first_names'].append(this_persons_first_name)
+
         counters['images_successfully_scanned'] += this_persons_encodings.shape[0]
+
         if this_persons_encodings.shape[0] > 0:
-            counters['person_number'] += 1
+            counters['people_with_encodings'] += 1
 
         all_encodings = pd.concat([all_encodings, this_persons_encodings])
 
-        counters['all_images_scan_attempted'].append(paths_for_images_with_faces)
-
         print("")
 
-    all_peoples_first_names = [name for name in all_peoples_first_names if (name != '')]
+        counters['all_peoples_first_names'] = [name for name in counters['all_peoples_first_names'] if (name != '')]
 
     all_encodings = all_encodings.reset_index(drop=True)
     all_encodings = all_encodings[['person_path', 'image_path', 'encodings']]
 
-    return all_encodings, encodings_start_time, counters, all_peoples_first_names
+    return all_encodings, encodings_start_time, counters
 
 
 def get_number_faces_to_scan(base_directory, overall_start_time):
@@ -312,39 +312,27 @@ def get_number_faces_to_scan(base_directory, overall_start_time):
     :return:
     """
 
-    image_no_max = input("\nHow many images do you want to compare? (leave blank for all)")
+    number_of_people_to_scan = input("\nHow many people's images do you want to compare? (leave blank for all)")
 
-    # Count the number of folders (people) in dataset, if no number defined then compare with all
-
-    person_count = len(([len(files) for r, d, files in os.walk(base_directory)])) - 1
+    people_in_base_directory = [os.path.join(base_directory, person) for person in os.listdir(base_directory)]
 
     # Count images
 
-    if image_no_max == "":
+    if number_of_people_to_scan == "":
         attempting_all = True
+        peoples_faces_to_scan = people_in_base_directory
+        number_of_people_to_scan = len(peoples_faces_to_scan)
     else:
-        image_no_max = int(image_no_max)
+        number_of_people_to_scan = int(number_of_people_to_scan)
         attempting_all = False
-
-    if attempting_all:
-        print("")
-        print("Counting the images...")
-        file_count = 0
-        person_no = 0
-        for _, dirs, files in os.walk(base_directory):
-            person_no += 1
-            file_count += len([x for x in files if x != "Thumbs.db"])
-        image_no_max = file_count
-
-    print("\n" + str(image_no_max) + " files to attempt to scan and compare")
-    print("")
+        peoples_faces_to_scan = people_in_base_directory[0:number_of_people_to_scan]
 
     file_str_prefix = os.path.join(results_directory,
                                    overall_start_time.strftime("%Y_%m_%d %H_%M_%S_") + (
                                        "_attempting_all_images_" if attempting_all else ("_attempting_" + str(
-                                           image_no_max) + "_images_")))
+                                           number_of_people_to_scan) + "_peoples_images_")))
 
-    return image_no_max, attempting_all, person_count, file_str_prefix
+    return number_of_people_to_scan, attempting_all, file_str_prefix, peoples_faces_to_scan
 
 
 def perhaps_print_comparison_counter(comparison_counter, total_comparisons, comparisons_start_time):
@@ -398,8 +386,8 @@ def encodings_comparer(all_encodings):
     return same_face_distances_df, different_face_distances_df, comparisons_start_time, comparison_counter
 
 
-def plotter(fig_names, cumulative, same_face_distances_df, different_face_distances_df, comparison_counter, image_no,
-            person_no, file_str_prefix):
+def plotter(fig_names, cumulative, same_face_distances_df, different_face_distances_df, comparison_counter,
+            file_str_prefix, counters):
     """
 
     :param fig_names:
@@ -427,8 +415,9 @@ def plotter(fig_names, cumulative, same_face_distances_df, different_face_distan
     plt.hist(different_face_distances, bins, alpha=0.5, label='different faces', density=True, edgecolor='black',
              linewidth=1.2, color='blue', cumulative=cumulative)
     plt.legend(loc='upper right')
-    plt.text(0.15, 0.9, str(comparison_counter) + " comparisons of \n" + str(image_no) + " images of \n " + str(
-        person_no) + " people",
+    plt.text(0.15, 0.9, str(comparison_counter) + " comparisons of \n" + str(
+        counters['images_successfully_scanned']) + " images of \n " + str(
+        counters['people_with_encodings']) + " people",
              ha='center', va='center', transform=ax.transAxes)
     fig.set_size_inches(12, 8)
     plt.xlabel("Face distance")
@@ -490,8 +479,9 @@ def roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_
     title = "ROC Curve (AUC = {})".format(round(auc, 4))
     plt.title(title)
     plt.text(0.9, 0.1,
-             str(comparison_counter) + " comparisons of \n" + str(counters['image_no']) + " images of \n " + str(
-                 counters['person_number']) + " people",
+             str(comparison_counter) + " comparisons of \n" + str(
+                 counters['images_successfully_scanned']) + " images of \n " + str(
+                 counters['people_with_encodings']) + " people",
              ha='center', va='center', transform=ax.transAxes)
     fig.savefig(file_str_prefix + r'_3_ROC.png')
     print(datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Graphs completed.")
@@ -652,12 +642,18 @@ def run_outputs(attempting_all, overall_start_time,
     outputs_str = ""
 
     outputs_str += ("attempting_all was " + str(attempting_all) + "\n")
-    outputs_str += (str(counters['image_no']) + " photos of " + str(counters['person_number']) + " people compared.\n")
-    outputs_str += ("Faces not found in " + str(len(counters['photos_with_no_faces_found_paths'])) + " images.\n")
-    images_to_exclude_in_this_run = [image for image in IMAGES_TO_EXCLUDE if
-                                     image in counters['all_images_scan_attempted']]
+    outputs_str += (str(counters['images_successfully_scanned']) + " photos of " + str(
+        counters['people_with_encodings']) + " people compared.\n")
+    outputs_str += ("Faces not found in " + str(len(counters['photos_with_no_faces_found_paths'])) + " images.\n\n")
+
     outputs_str += ("Number of images excluded because the wrong face gets picked, etc: " + str(
-        len(images_to_exclude_in_this_run)) + "\n")
+        len(counters['IMAGES_TO_EXCLUDE_excluded'])) + "\n")
+
+    if len(counters['IMAGES_TO_EXCLUDE_excluded']) > 0:
+        outputs_str += ("Images excluded because the wrong face gets picked, etc:\n\n" +
+                        "\n".join(counters['IMAGES_TO_EXCLUDE_excluded']) +
+                        "\n\n")
+
     outputs_str += ("Not sure which face to pick in " + str(
         len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with'])) + " images.\n\n")
 
@@ -669,11 +665,6 @@ def run_outputs(attempting_all, overall_start_time,
     if len(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) > 0:
         outputs_str += ("Images where not sure which face to pick:\n\n" +
                         "\n".join(counters['photos_with_multiple_faces_and_no_other_images_to_compare_with']) +
-                        "\n\n")
-
-    if (len(IMAGES_TO_EXCLUDE) > 0) and (len(images_to_exclude_in_this_run) > 0):
-        outputs_str += ("Images excluded because the wrong face gets picked, etc:\n\n" +
-                        "\n".join(images_to_exclude_in_this_run) +
                         "\n\n")
 
     outputs_str += ("Summary of time taken:\n\n" +
@@ -714,19 +705,18 @@ def all_graphs(same_face_distances_df, different_face_distances_df, comparison_c
         print("")
 
         if CUMULATIVE_GRAPHS:
-
             ax = plotter(fig_names=(
                 '_1_distributions_same_diff_distances_cum', '_2_distributions_same_diff_distances_with_norm_cum'),
                 cumulative=1, same_face_distances_df=same_face_distances_df,
                 different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
-                image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
+                file_str_prefix=file_str_prefix, counters=counters)
 
         else:
             ax = plotter(
                 fig_names=('_1_distributions_same_diff_distances', '_2_distributions_same_diff_distances_with_norm'),
                 cumulative=False, same_face_distances_df=same_face_distances_df,
                 different_face_distances_df=different_face_distances_df, comparison_counter=comparison_counter,
-                image_no=counters['image_no'], person_no=counters['person_number'], file_str_prefix=file_str_prefix)
+                file_str_prefix=file_str_prefix, counters=counters)
 
         roc_auc(same_face_distances_df, different_face_distances_df, ax, comparison_counter, counters,
                 file_str_prefix)
@@ -773,7 +763,7 @@ def combine_face_images(face_images_df, file_str_prefix, image_note_str):
                 all_images)
 
 
-def plot_first_names_wordcloud(file_str_prefix, all_peoples_first_names):
+def plot_first_names_wordcloud(file_str_prefix, counters):
     """
 
     :param base_directory:
@@ -781,7 +771,7 @@ def plot_first_names_wordcloud(file_str_prefix, all_peoples_first_names):
     """
     print("\n" + datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making names wordcloud..." + "\n")
 
-    names = [name.lower().capitalize() for name in all_peoples_first_names]
+    names = [name.lower().capitalize() for name in counters['all_peoples_first_names']]
 
     names_string = " ".join(names)
     wordcloud = WordCloud(max_words=1000, width=1800, height=600, collocations=False).generate(names_string)

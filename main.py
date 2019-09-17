@@ -1,6 +1,6 @@
 import datetime
 
-from configs import doing_graphs, doing_precision_recall, base_directory, CUMULATIVE_GRAPHS
+from configs import doing_graphs, doing_precision_recall, base_directory, CUMULATIVE_GRAPHS, IMAGES_TO_EXCLUDE
 from utils import encodings_builder, get_number_faces_to_scan, encodings_comparer, \
     precision_recall, run_outputs, output_most_similar_different_people_and_most_different_same_faces, \
     all_graphs, combine_face_images, plot_first_names_wordcloud
@@ -10,13 +10,15 @@ def main():
     overall_start_time = datetime.datetime.now()
 
     # Allow user to compare only a subset of the faces
-    image_no_max, attempting_all, person_count, file_str_prefix = get_number_faces_to_scan(base_directory,
-                                                                                           overall_start_time)
+    number_of_people_to_scan, attempting_all, file_str_prefix, peoples_faces_to_scan = get_number_faces_to_scan(
+        base_directory,
+        overall_start_time)
 
     # Build up encodings dataset
-    all_encodings, encodings_start_time, counters, all_peoples_first_names = encodings_builder(base_directory,
-                                                                                               image_no_max,
-                                                                                               attempting_all)
+    all_encodings, encodings_start_time, counters = encodings_builder(base_directory,
+                                                                      number_of_people_to_scan,
+                                                                      peoples_faces_to_scan,
+                                                                      IMAGES_TO_EXCLUDE)
 
     # Compare the encodings
     (same_face_distances_df,
@@ -44,7 +46,7 @@ def main():
     combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_9_different_looking_same_people.jpg')
 
     # First names wordcloud
-    plot_first_names_wordcloud(file_str_prefix, all_peoples_first_names)
+    plot_first_names_wordcloud(file_str_prefix, counters)
 
     # Write out timings and info about images that failed
     run_outputs(attempting_all, overall_start_time,
