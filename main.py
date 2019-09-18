@@ -15,10 +15,10 @@ def main():
         overall_start_time)
 
     # Build up encodings dataset
-    all_encodings, encodings_start_time, counters = encodings_builder(base_directory,
-                                                                      number_of_people_to_scan,
-                                                                      peoples_faces_to_scan,
-                                                                      IMAGES_TO_EXCLUDE)
+    all_encodings, encodings_start_time, lists_of_images = encodings_builder(base_directory,
+                                                                             number_of_people_to_scan,
+                                                                             peoples_faces_to_scan,
+                                                                             IMAGES_TO_EXCLUDE)
 
     # Compare the encodings
     (same_face_distances_df,
@@ -28,7 +28,8 @@ def main():
         all_encodings)
 
     # Make graphs
-    graph_start_time = all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter, counters,
+    graph_start_time = all_graphs(same_face_distances_df, different_face_distances_df, comparison_counter,
+                                  lists_of_images,
                                   file_str_prefix, doing_graphs, CUMULATIVE_GRAPHS)
 
     # Calculate precision and recall
@@ -46,12 +47,12 @@ def main():
     combine_face_images(same_face_distances_df_sorted, file_str_prefix, '_9_different_looking_same_people.jpg')
 
     # First names wordcloud
-    plot_first_names_wordcloud(file_str_prefix, counters)
+    plot_first_names_wordcloud(file_str_prefix, lists_of_images)
 
     # Write out timings and info about images that failed
     run_outputs(attempting_all, overall_start_time,
                 encodings_start_time, comparisons_start_time, graph_start_time, precision_recall_start_time,
-                file_str_prefix, counters
+                file_str_prefix, lists_of_images
                 )
 
 
