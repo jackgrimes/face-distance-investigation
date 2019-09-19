@@ -284,6 +284,9 @@ def encodings_builder(base_directory,
          this_persons_first_name) = put_selected_encodings_into_df(selected_encodings_from_this_persons_images,
                                                                    paths_for_images_with_faces, person_path)
 
+        if this_persons_encodings.shape[0] > 0:
+            lists_of_images['images_with_encodings'].extend(this_persons_encodings['image_path'].tolist())
+
         # Correct person_path, where appropriate, if this person is also found elsewhere in lfw under a different name
         if os.path.basename(person_path) in ACTUALLY_SAME_PEOPLE.keys():
             lists_of_images['people_names_corrected_to_other_people'].append(os.path.basename(person_path))
@@ -292,12 +295,9 @@ def encodings_builder(base_directory,
             person = ACTUALLY_SAME_PEOPLE[os.path.basename(person_path)]
             person_path = os.path.join(os.path.dirname(person_path), person)
             this_persons_encodings['person_path'] = person_path
-
-        lists_of_images['all_peoples_first_names'].append(this_persons_first_name)
-
-        if this_persons_encodings.shape[0] > 0:
-            lists_of_images['images_with_encodings'].extend(this_persons_encodings['image_path'].tolist())
+        elif this_persons_encodings.shape[0] > 0:
             lists_of_images['people_with_encodings'].append(person)
+            lists_of_images['all_peoples_first_names'].append(this_persons_first_name)
 
         all_encodings = pd.concat([all_encodings, this_persons_encodings])
 
