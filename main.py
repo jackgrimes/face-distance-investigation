@@ -1,6 +1,6 @@
 import datetime
 
-from configs import doing_graphs, doing_precision_recall, base_directory, CUMULATIVE_GRAPHS, IMAGES_TO_EXCLUDE
+from configs import doing_graphs, doing_precision_recall, lfw_path, CUMULATIVE_GRAPHS, IMAGES_TO_EXCLUDE
 from utils import encodings_builder, get_number_faces_to_scan, encodings_comparer, \
     precision_recall, run_outputs, output_most_similar_different_people_and_most_different_same_faces, \
     all_graphs, combine_face_images, plot_first_names_wordcloud
@@ -11,11 +11,11 @@ def main():
 
     # Allow user to compare only a subset of the faces
     number_of_people_to_scan, attempting_all, file_str_prefix, peoples_faces_to_scan = get_number_faces_to_scan(
-        base_directory,
+        lfw_path,
         overall_start_time)
 
     # Build up encodings dataset
-    all_encodings, encodings_start_time, lists_of_images = encodings_builder(base_directory,
+    all_encodings, encodings_start_time, lists_of_images = encodings_builder(lfw_path,
                                                                              number_of_people_to_scan,
                                                                              peoples_faces_to_scan,
                                                                              IMAGES_TO_EXCLUDE)

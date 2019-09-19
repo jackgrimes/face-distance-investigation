@@ -4,7 +4,7 @@ doing_graphs = True
 doing_precision_recall = True
 
 # Provide path to faces dataset
-base_directory = r'C:\dev\data\lfw'
+lfw_path = r'C:\dev\data\lfw'
 
 # Results directory
 results_directory = r"C:\dev\data\face_distance_investigation"
@@ -39,7 +39,7 @@ IMAGES_TO_EXCLUDE = [r'Ricky_Ray\Ricky_Ray_0001.jpg',
                      r'Hans_Blix\Hans_Blix_0026.jpg',
                      r'Mahathir_Mohamad\Mahathir_Mohamad_0009.jpg',
                      ]
-IMAGES_TO_EXCLUDE = [os.path.join(base_directory, file) for file in IMAGES_TO_EXCLUDE]
+IMAGES_TO_EXCLUDE = [os.path.join(lfw_path, file) for file in IMAGES_TO_EXCLUDE]
 
 # Some people are mislabelled and these are examples of people who are actually the same person
 ACTUALLY_SAME_PEOPLE = {"Felipe_De_Borbon": "Prince_Felipe",

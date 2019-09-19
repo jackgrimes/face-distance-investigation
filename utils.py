@@ -13,7 +13,7 @@ from wordcloud import WordCloud
 
 from configs import ALLOWED_EXTENSIONS, IMAGES_TO_EXCLUDE, N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE, \
     ACTUALLY_SAME_PEOPLE
-from configs import base_directory, results_directory
+from configs import lfw_path, results_directory
 
 
 def timesince(time, percent_done):
@@ -85,16 +85,16 @@ def print_updates_get_encodings(person, number_of_people_to_scan, encodings_star
     timesince(encodings_start_time, 100 * (len(lists_of_images['people_attempted'])) / number_of_people_to_scan)
 
 
-def find_which_people_and_images_to_scan(attempting_all, base_directory, image_no_max):
+def find_which_people_and_images_to_scan(attempting_all, lfw_path, image_no_max):
     """
 
     :param attempting_all:
-    :param base_directory:
+    :param lfw_path:
     :param image_no_max:
     :return:
     """
-    people = [folder for folder in os.listdir(base_directory) if ("." not in folder)]
-    people_directory_full_paths = [os.path.join(base_directory, person) for person in os.listdir(base_directory) if
+    people = [folder for folder in os.listdir(lfw_path) if ("." not in folder)]
+    people_directory_full_paths = [os.path.join(lfw_path, person) for person in os.listdir(lfw_path) if
                                    (".db" not in person)]
     people_image_nos = [len([file for file in os.listdir(person_directory) if
                              ((".db" not in file) and (os.path.join(person_directory, file) not in IMAGES_TO_EXCLUDE))])
@@ -218,13 +218,13 @@ def put_selected_encodings_into_df(selected_encodings_from_this_image, paths_for
     return this_persons_encodings, this_persons_first_name
 
 
-def encodings_builder(base_directory,
+def encodings_builder(lfw_path,
                       number_of_people_to_scan,
                       peoples_faces_to_scan,
                       IMAGES_TO_EXCLUDE):
     """
 
-    :param base_directory:
+    :param lfw_path:
     :param image_no_max:
     :param attempting_all:
     :return:
@@ -248,7 +248,7 @@ def encodings_builder(base_directory,
 
     for person_number, person in enumerate(peoples_faces_to_scan):
 
-        person_path = os.path.join(base_directory, person)
+        person_path = os.path.join(lfw_path, person)
 
         print_updates_get_encodings(person, number_of_people_to_scan, encodings_start_time, lists_of_images)
 
@@ -312,28 +312,28 @@ def encodings_builder(base_directory,
     return all_encodings, encodings_start_time, lists_of_images
 
 
-def get_number_faces_to_scan(base_directory, overall_start_time):
+def get_number_faces_to_scan(lfw_path, overall_start_time):
     """
 
-    :param base_directory:
+    :param lfw_path:
     :param overall_start_time:
     :return:
     """
 
     number_of_people_to_scan = input("\nHow many people's images do you want to compare? (leave blank for all)")
 
-    people_in_base_directory = [os.path.join(base_directory, person) for person in os.listdir(base_directory)]
+    people_in_lfw_path = [os.path.join(lfw_path, person) for person in os.listdir(lfw_path)]
 
     # Count images
 
     if number_of_people_to_scan == "":
         attempting_all = True
-        peoples_faces_to_scan = people_in_base_directory
+        peoples_faces_to_scan = people_in_lfw_path
         number_of_people_to_scan = len(peoples_faces_to_scan)
     else:
         number_of_people_to_scan = int(number_of_people_to_scan)
         attempting_all = False
-        peoples_faces_to_scan = people_in_base_directory[0:number_of_people_to_scan]
+        peoples_faces_to_scan = people_in_lfw_path[0:number_of_people_to_scan]
 
     file_str_prefix = os.path.join(results_directory,
                                    overall_start_time.strftime("%Y_%m_%d %H_%M_%S_") + (
@@ -651,6 +651,10 @@ def run_outputs(attempting_all, overall_start_time,
 
     outputs_str += ("attempting_all was " + str(attempting_all) + "\n")
 
+    n_people_lfw, n_images_lfw = count_images_lfw(lfw_path)
+
+    outputs_str += ("\nLFW has " + str(n_images_lfw) + " images of " + str(n_people_lfw) + " people.\n")
+
     outputs_str += ("\nNumber of images excluded because the wrong face gets picked, etc: " + str(
         len(lists_of_images['IMAGES_TO_EXCLUDE_excluded'])) + "\n")
     if len(lists_of_images['IMAGES_TO_EXCLUDE_excluded']) > 0:
@@ -756,8 +760,9 @@ def combine_face_images(face_images_df, file_str_prefix, image_note_str):
     :param image_note_str:
     :return:
     """
-    face_images_df['path1'] = face_images_df['path1'].str.replace('../2018-11_Lookalike_finder/lfw', base_directory)
-    face_images_df['path2'] = face_images_df['path2'].str.replace('../2018-11_Lookalike_finder/lfw', base_directory)
+    #todo: delete
+    #face_images_df['path1'] = face_images_df['path1'].str.replace('../2018-11_Lookalike_finder/lfw', lfw_path)
+    #face_images_df['path2'] = face_images_df['path2'].str.replace('../2018-11_Lookalike_finder/lfw', lfw_path)
 
     face_images_df['path1'] = face_images_df['path1'].str.replace(r'\\', '/')
     face_images_df['path2'] = face_images_df['path2'].str.replace(r'\\', '/')
@@ -790,7 +795,7 @@ def combine_face_images(face_images_df, file_str_prefix, image_note_str):
 def plot_first_names_wordcloud(file_str_prefix, lists_of_images):
     """
 
-    :param base_directory:
+    :param lfw_path:
     :return:
     """
     print("\n" + datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making names wordcloud..." + "\n")
@@ -802,3 +807,15 @@ def plot_first_names_wordcloud(file_str_prefix, lists_of_images):
 
     filename = file_str_prefix + '_10_names_wordcloud.jpg'
     imsave(os.path.join(results_directory, filename), wordcloud)
+
+def count_images_lfw(lfw_path):
+    """
+
+    :param lfw_path:
+    :return:
+    """
+    folders = [folder for folder in os.listdir(lfw_path) if '.' not in folder]
+    files = [file for file in [os.listdir(os.path.join(lfw_path, folder)) for folder in folders] if '.db' not in file]
+    files = [item for items in files for item in items]
+
+    return len(folders), len(files)
