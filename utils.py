@@ -509,10 +509,6 @@ def do_precision_recall(same_face_distances_df, different_face_distances_df, fil
     same_face_distances = same_face_distances_df['distance']
     different_face_distances = different_face_distances_df['distance']
 
-    print(
-        datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now doing precision and recall calculations...")
-    print("")
-
     same_faces_binned = pd.DataFrame({'same_faces': same_face_distances})
     same_faces_binned['same_faces_freq'] = pd.cut(same_faces_binned.same_faces, bin_boundaries)
 
@@ -555,6 +551,11 @@ def precision_recall(same_face_distances_df, different_face_distances_df, file_s
     precision_recall_start_time = datetime.datetime.now()
 
     if doing_precision_recall:
+
+        print(
+            datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now doing precision and recall calculations...")
+        print("")
+
         do_precision_recall(same_face_distances_df=same_face_distances_df,
                             different_face_distances_df=different_face_distances_df,
                             file_str_prefix=file_str_prefix,
@@ -798,7 +799,7 @@ def plot_first_names_wordcloud(file_str_prefix, lists_of_images):
     :param lfw_path:
     :return:
     """
-    print("\n" + datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making names wordcloud..." + "\n")
+    print("\n" + datetime.datetime.now().strftime("%Y_%m_%d__%H:%M:%S") + " Now making names wordcloud...")
 
     names = [name.lower().capitalize() for name in lists_of_images['all_peoples_first_names']]
 
