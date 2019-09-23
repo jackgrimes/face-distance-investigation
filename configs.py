@@ -38,6 +38,9 @@ IMAGES_TO_EXCLUDE = [r'Ricky_Ray\Ricky_Ray_0001.jpg',
                      r'Mahmoud_Abbas\Mahmoud_Abbas_0021.jpg',
                      r'Hans_Blix\Hans_Blix_0026.jpg',
                      r'Mahathir_Mohamad\Mahathir_Mohamad_0009.jpg',
+                     r'Michael_Schumacher\Michael_Schumacher_0008.jpg',
+                     r'Recep_Tayyip_Erdogan\Recep_Tayyip_Erdogan_0004.jpg',
+                     r'Janica_Kostelic\Janica_Kostelic_0001.jpg'
                      ]
 IMAGES_TO_EXCLUDE = [os.path.join(lfw_path, file) for file in IMAGES_TO_EXCLUDE]
 
