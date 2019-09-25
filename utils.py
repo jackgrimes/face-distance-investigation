@@ -236,6 +236,7 @@ def encodings_builder(lfw_path,
 
     lists_of_images = {'images_attempted': [],
                        'people_attempted': [],
+                       'people_with_images_attempted': [],
                        'people_with_encodings': [],
                        'images_with_encodings': [],
                        'IMAGES_TO_EXCLUDE_excluded': [],
@@ -252,16 +253,18 @@ def encodings_builder(lfw_path,
 
         print_updates_get_encodings(person, number_of_people_to_scan, encodings_start_time, lists_of_images)
 
+        lists_of_images['people_attempted'].append(person)
+
         (encodings_images_this_person_not_in_IMAGES_TO_EXCLUDE,
          images_this_person_not_in_IMAGES_TO_EXCLUDE,
          images_this_person_in_IMAGES_TO_EXCLUDE) = get_this_persons_encodings(person_path,
                                                                                IMAGES_TO_EXCLUDE)
 
-        if len(images_this_person_not_in_IMAGES_TO_EXCLUDE) > 0:
-            lists_of_images['people_attempted'].append(person)
-
         lists_of_images['images_attempted'].extend(encodings_images_this_person_not_in_IMAGES_TO_EXCLUDE)
         lists_of_images['IMAGES_TO_EXCLUDE_excluded'].extend(images_this_person_in_IMAGES_TO_EXCLUDE)
+
+        if len(images_this_person_not_in_IMAGES_TO_EXCLUDE) > 0:
+            lists_of_images['people_with_images_attempted'].append(person)
 
         (image_paths_without_faces,
          number_faces_found_in_each_image,
@@ -664,7 +667,7 @@ def run_outputs(attempting_all, overall_start_time,
                         "\n\n")
 
     outputs_str += (str(len(lists_of_images['images_attempted'])) + " photos of " + str(
-        len(lists_of_images['people_attempted'])) + " people remained to attempt.\n")
+        len(lists_of_images['people_with_images_attempted'])) + " people remained to attempt.\n")
 
     outputs_str += ("Of these:")
 
