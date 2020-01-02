@@ -13,23 +13,24 @@ from configs import results_directory
 
 # Which file to look at
 
-which_results = 'lookalikes.csv'
+which_results = "lookalikes.csv"
 # which_results = 'different_looking_same_people.csv'
 
 # Get the most recent file of that type, extract the paths
 
 all_results_files = os.listdir(results_directory)
-most_recent_results_file_of_specified_type = [i for i in all_results_files if (which_results in i)][-1]
-full_path = os.path.join(results_directory,
-                         most_recent_results_file_of_specified_type)
-paths_df = pd.read_csv(full_path)[['path1', 'path2']]
+most_recent_results_file_of_specified_type = [
+    i for i in all_results_files if (which_results in i)
+][-1]
+full_path = os.path.join(results_directory, most_recent_results_file_of_specified_type)
+paths_df = pd.read_csv(full_path)[["path1", "path2"]]
 paths_list = paths_df.values.tolist()
 
 # Loop over those paths
 
 for paths in paths_list:
 
-    print('\nImage pair: ')
+    print("\nImage pair: ")
     print(paths)
     images = []
     encodings = []
@@ -56,10 +57,13 @@ for paths in paths_list:
 
     # Print the face distances, in order
     for face in encodings[1]:
-        print('Face distance: ' + str(round(face_recognition.face_distance(encodings[0], face)[0], 3)))
+        print(
+            "Face distance: "
+            + str(round(face_recognition.face_distance(encodings[0], face)[0], 3))
+        )
 
     images_combined = np.concatenate(images, axis=1)
 
     # Display the resulting image
-    cv2.imshow('image', images_combined)
+    cv2.imshow("image", images_combined)
     cv2.waitKey(0)
