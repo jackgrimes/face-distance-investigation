@@ -1,4 +1,10 @@
+import logging
+from logging import getLogger
+
 from utils import create_sprite, encode_faces, run_tensorboard, set_up_tensorboard
+
+logger = getLogger(__name__)
+logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
 
 ENCODING_FACES = True
 CREATING_SPRITE = True

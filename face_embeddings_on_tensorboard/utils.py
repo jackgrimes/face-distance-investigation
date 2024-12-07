@@ -1,5 +1,6 @@
 import os
 import subprocess
+from logging import getLogger
 
 import cv2
 import face_recognition
@@ -13,10 +14,93 @@ from tqdm import tqdm
 tf.disable_v2_behavior()
 
 LOG_DIR = os.path.join(data_path, "tensorboard_logs")
-IMAGE_SIZE = (64, 64)
+IMAGE_SIZE = (100, 100)
 CHECKPOINT_FILE = os.path.join(LOG_DIR, "features.ckpt")
 METADATA_FILE = os.path.join(LOG_DIR, "metadata.tsv")
 SPRITES_FILE = os.path.join(LOG_DIR, "sprites.jpg")
+
+logger = getLogger(__name__)
+
+
+def take_most_central_face(encodings, image, file_path):
+    # If no other images for this person, take the most central face
+
+    # locations are top, right, bottom, left
+    face_locations = face_recognition.face_locations(image)
+
+    im = cv2.imread(file_path)
+    height, width, _ = im.shape
+
+    distances = []
+
+    for location in face_locations:
+        top, right, bottom, left = location
+        y, x = (top + bottom) / 2, (right + left) / 2
+        y_offset = y - (height / 2)
+        x_offset = x - (width / 2)
+
+        distance_from_centre = np.sqrt(y_offset**2 + x_offset**2)
+
+        distances.append(distance_from_centre)
+
+    i = np.argmin(distances)
+    encodings = [encodings[i]]
+    return encodings
+
+
+def compare_with_other_images_this_person(encodings, other_images_this_person):
+    # If other faces for this person, take the face that's the closest match with the other faces
+    other_faces_this_person = []
+    for other_image in other_images_this_person:
+        other_image_loaded = face_recognition.load_image_file(other_image)
+        other_faces_this_person.extend(
+            face_recognition.face_encodings(other_image_loaded)
+        )
+    if len(other_faces_this_person) > 0:
+        results = []
+        for face in encodings:
+            d = face_recognition.face_distance(other_faces_this_person, face)
+            average_d = d.mean()
+            results.append(average_d)
+        encodings = [encodings[np.argmin(results)]]
+
+    return encodings
+
+
+def get_other_face_encodings_this_person(other_images_this_person):
+    other_faces_this_person = []
+    for other_image in other_images_this_person:
+        other_image_loaded = face_recognition.load_image_file(other_image)
+        other_faces_this_person.extend(
+            face_recognition.face_encodings(other_image_loaded)
+        )
+        return other_faces_this_person
+
+
+def select_best_face(encodings, this_person_folder, file_path, image):
+    this_person_images = [
+        os.path.join(this_person_folder, f)
+        for f in os.listdir(this_person_folder)
+        if f.endswith(".jpg")
+    ]
+    other_images_this_person = [i for i in this_person_images if i != file_path]
+
+    if len(other_images_this_person) == 0:
+        encodings = take_most_central_face(encodings, image, file_path)
+        return encodings
+
+    if len(other_images_this_person) > 0:
+        other_face_encodings_this_person = get_other_face_encodings_this_person(
+            other_images_this_person
+        )
+        if len(other_face_encodings_this_person) == 0:
+            encodings = take_most_central_face(encodings, image, file_path)
+            return encodings
+        else:
+            encodings = compare_with_other_images_this_person(
+                encodings, other_images_this_person
+            )
+            return encodings
 
 
 def encode_faces(limit=None):
@@ -24,44 +108,50 @@ def encode_faces(limit=None):
     metadata = pd.DataFrame()
     counter = 0
 
-    people = os.listdir(lfw_path)
+    logger.info("Scanning for files")
 
-    if limit is None:
-        limit = len(people)
+    all_file_paths = []
+    for dirname, subdirs, files in os.walk(lfw_path):
+        for fname in files:
+            full_path = os.path.join(dirname, fname)
+            if fname.endswith(".jpg"):
+                all_file_paths.append(full_path)
 
-    for person in tqdm(people[0:limit]):
-        files = os.listdir(os.path.join(lfw_path, person))
-        files = [file for file in files if file.endswith(".jpg")]
-        if len(files) > 0:
-            for file in files:
-                image = face_recognition.load_image_file(
-                    os.path.join(lfw_path, person, file)
-                )
-                encodings = face_recognition.face_encodings(image)
-                if len(encodings) == 1:
-                    encodings = encodings[0]
-                    new_encodings = pd.DataFrame(encodings).T
-                    new_encodings.index = [counter]
-                    all_encodings = pd.concat([all_encodings, new_encodings])
-                    metadata = pd.concat(
-                        [
-                            metadata,
-                            pd.DataFrame(
-                                {
-                                    "name": person.replace("_", " "),
-                                    "path": os.path.join(lfw_path, person, file),
-                                },
-                                index=[counter],
-                            ),
-                        ]
-                    )
-                    counter += 1
-                    if counter > limit:
-                        break
-                if counter > limit:
-                    break
-        if counter > limit:
-            break
+    if limit is not None:
+        all_file_paths = all_file_paths[0:limit]
+
+    for file_path in tqdm(all_file_paths):
+        this_person_folder = os.path.dirname(file_path)
+        person = os.path.basename(this_person_folder).replace("_", " ")
+
+        image = face_recognition.load_image_file(
+            os.path.join(lfw_path, person, file_path)
+        )
+        encodings = face_recognition.face_encodings(image)
+
+        if len(encodings) > 1:
+            encodings = select_best_face(
+                encodings, this_person_folder, file_path, image
+            )
+
+        if len(encodings) == 1:
+            encodings = encodings[0]
+            new_encodings = pd.DataFrame(encodings).T
+            new_encodings.index = [counter]
+            all_encodings = pd.concat([all_encodings, new_encodings])
+            metadata = pd.concat(
+                [
+                    metadata,
+                    pd.DataFrame(
+                        {
+                            "name": person.replace("_", " "),
+                            "path": os.path.join(lfw_path, person, file_path),
+                        },
+                        index=[counter],
+                    ),
+                ]
+            )
+            counter += 1
 
     all_encodings.to_csv(
         os.path.join(data_path, "tensorboard_logs", "all_encodings.tsv"),
@@ -98,7 +188,6 @@ def combine_images(data):
 
 
 def create_sprite():
-
     metadata = pd.read_csv(
         os.path.join(data_path, "tensorboard_logs", "metadata.tsv"), sep="\t"
     )
@@ -120,7 +209,6 @@ def create_sprite():
 
 
 def set_up_tensorboard():
-
     df = pd.read_csv(
         os.path.join(data_path, "tensorboard_logs", "all_encodings.tsv"),
         sep="\t",
