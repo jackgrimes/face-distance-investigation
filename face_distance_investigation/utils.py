@@ -289,19 +289,19 @@ def select_right_face_encodings_from_each_image(
                 this_image_face_distances_to_other_image_faces_df = pd.DataFrame(
                     this_image_face_distances_to_other_image_faces
                 )
-                this_image_face_distances_to_other_image_faces_df = this_image_face_distances_to_other_image_faces_df.rename(
-                    columns={0: "face", 1: "distance"}
+                this_image_face_distances_to_other_image_faces_df = (
+                    this_image_face_distances_to_other_image_faces_df.rename(
+                        columns={0: "face", 1: "distance"}
+                    )
                 )
-                face_most_similar_to_faces_in_other_images_index = this_image_face_distances_to_other_image_faces_df[
-                    this_image_face_distances_to_other_image_faces_df["distance"]
-                    == this_image_face_distances_to_other_image_faces_df[
-                        "distance"
-                    ].min()
-                ][
-                    "face"
-                ].values[
-                    0
-                ]
+                face_most_similar_to_faces_in_other_images_index = (
+                    this_image_face_distances_to_other_image_faces_df[
+                        this_image_face_distances_to_other_image_faces_df["distance"]
+                        == this_image_face_distances_to_other_image_faces_df[
+                            "distance"
+                        ].min()
+                    ]["face"].values[0]
+                )
                 selected_encodings_from_this_image = [
                     this_image_encodings[
                         face_most_similar_to_faces_in_other_images_index
