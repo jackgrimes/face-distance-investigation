@@ -108,6 +108,8 @@ def encode_faces(limit=None):
     metadata = pd.DataFrame()
     counter = 0
 
+    logger.info("Encoding faces")
+
     logger.info("Scanning for files")
 
     all_file_paths = []
@@ -120,6 +122,7 @@ def encode_faces(limit=None):
     if limit is not None:
         all_file_paths = all_file_paths[0:limit]
 
+    logger.info("Getting face encodings from image files")
     for file_path in tqdm(all_file_paths):
         this_person_folder = os.path.dirname(file_path)
         person = os.path.basename(this_person_folder).replace("_", " ")
@@ -188,6 +191,7 @@ def combine_images(data):
 
 
 def create_sprite():
+    logger.info("Creating sprite")
     metadata = pd.read_csv(
         os.path.join(data_path, "tensorboard_logs", "metadata.tsv"), sep="\t"
     )
@@ -209,6 +213,8 @@ def create_sprite():
 
 
 def set_up_tensorboard():
+    logger.info("Setting up tensorboard")
+
     df = pd.read_csv(
         os.path.join(data_path, "tensorboard_logs", "all_encodings.tsv"),
         sep="\t",
@@ -236,4 +242,5 @@ def set_up_tensorboard():
 
 
 def run_tensorboard():
+    logger.info("Running tensorboard")
     subprocess.run(["tensorboard", "--logdir", LOG_DIR])
