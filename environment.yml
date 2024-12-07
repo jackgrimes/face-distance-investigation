@@ -16,3 +16,6 @@ dependencies:
     - isort==5.13.2
     - mypy==1.13.0
     - black==24.8.0
+    - tqdm==4.67.1
+    - tensorboard==2.13.0
+    - tensorflow-2.13.0
