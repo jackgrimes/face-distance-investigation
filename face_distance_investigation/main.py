@@ -1,22 +1,22 @@
 import datetime
 
 from configs import (
+    CUMULATIVE_GRAPHS,
+    IMAGES_TO_EXCLUDE,
     doing_graphs,
     doing_precision_recall,
     lfw_path,
-    CUMULATIVE_GRAPHS,
-    IMAGES_TO_EXCLUDE,
 )
 from utils import (
-    encodings_builder,
-    get_number_faces_to_scan,
-    encodings_comparer,
-    precision_recall,
-    run_outputs,
-    output_most_similar_different_people_and_most_different_same_faces,
     all_graphs,
     combine_face_images,
+    encodings_builder,
+    encodings_comparer,
+    get_number_faces_to_scan,
+    output_most_similar_different_people_and_most_different_same_faces,
     plot_first_names_wordcloud,
+    precision_recall,
+    run_outputs,
 )
 
 
