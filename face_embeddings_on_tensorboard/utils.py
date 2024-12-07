@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 import cv2
 import face_recognition
@@ -96,7 +97,13 @@ def combine_images(data):
     return data
 
 
-def create_sprite(image_files):
+def create_sprite():
+
+    metadata = pd.read_csv(
+        os.path.join(data_path, "tensorboard_logs", "metadata.tsv"), sep="\t"
+    )
+    image_files = metadata["path"].tolist()
+
     # Max sprite size is 8192 x 8192 so this max samples makes visualization easy
     MAX_NUMBER_SAMPLES = 8191
 
@@ -112,15 +119,7 @@ def create_sprite(image_files):
     cv2.imwrite(SPRITES_FILE, sprite)
 
 
-def create_sprite_wrapper():
-    metadata = pd.read_csv(
-        os.path.join(data_path, "tensorboard_logs", "metadata.tsv"), sep="\t"
-    )
-    paths = metadata["path"].tolist()
-    create_sprite(image_files=paths)
-
-
-def visualize_encodings():
+def set_up_tensorboard():
 
     df = pd.read_csv(
         os.path.join(data_path, "tensorboard_logs", "all_encodings.tsv"),
@@ -146,3 +145,7 @@ def visualize_encodings():
         embedding.sprite.image_path = SPRITES_FILE
         embedding.sprite.single_image_dim.extend(IMAGE_SIZE)
         projector.visualize_embeddings(tf.summary.FileWriter(LOG_DIR), config)
+
+
+def run_tensorboard():
+    subprocess.run(["tensorboard", "--logdir", LOG_DIR])
