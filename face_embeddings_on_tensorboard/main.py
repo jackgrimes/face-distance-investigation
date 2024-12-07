@@ -11,14 +11,17 @@ CREATING_SPRITE = True
 SETTING_UP_TENSORBOARD = True
 RUNNING_TENSORBOARD = True
 
-if ENCODING_FACES:
-    encode_faces()
+if __name__ == "__main__":
+    logger.info("Running main.py")
 
-if CREATING_SPRITE:
-    create_sprite()
+    if ENCODING_FACES:
+        encode_faces()
 
-if SETTING_UP_TENSORBOARD:
-    set_up_tensorboard()
+    if CREATING_SPRITE:
+        create_sprite()
 
-if RUNNING_TENSORBOARD:
-    run_tensorboard()
+    if SETTING_UP_TENSORBOARD:
+        set_up_tensorboard()
+
+    if RUNNING_TENSORBOARD:
+        run_tensorboard()
