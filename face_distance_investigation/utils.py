@@ -6,18 +6,18 @@ import face_recognition
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from configs import (
+    ACTUALLY_SAME_PEOPLE,
+    ALLOWED_EXTENSIONS,
+    IMAGES_TO_EXCLUDE,
+    N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE,
+    lfw_path,
+    results_directory,
+)
 from scipy.misc import imsave
 from scipy.stats import norm
 from sklearn import metrics
 from wordcloud import WordCloud
-
-from configs import (
-    ALLOWED_EXTENSIONS,
-    IMAGES_TO_EXCLUDE,
-    N_LOOKALIKES_AND_DIFFERENT_LOOKING_SAME_PEOPLE_TO_INCLUDE,
-    ACTUALLY_SAME_PEOPLE,
-)
-from configs import lfw_path, results_directory
 
 
 def timesince(time, percent_done):
