@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 88
+extend-ignore =
+    # Whitespace before ':' (E203)
+    E203,
+    # Line break occurred before a binary operator (W503)
+    W503,
+    # Line too long (82 &gt; 79 characters) (E501)
+    E501,
+    # Module level import not at top of file (E402)
+    E402,
+    # Trailing whitespace (W291)
+    W291,
+    # Blank line contains whitespace (W293)
+    W293,
+    # Local variable name is assigned to but never used (F841)
+    F841,
+    # Invalid escape sequence 'x' (W605)
+    W605
