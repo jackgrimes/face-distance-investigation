@@ -1,14 +1,18 @@
-from utils import create_sprite_wrapper, encode_faces, visualize_encodings
+from utils import create_sprite, encode_faces, run_tensorboard, set_up_tensorboard
 
 ENCODING_FACES = True
 CREATING_SPRITE = True
-VISUALIZING_ENCODINGS = True
+SETTING_UP_TENSORBOARD = True
+RUNNING_TENSORBOARD = True
 
 if ENCODING_FACES:
-    encode_faces(limit=30)
+    encode_faces()
 
 if CREATING_SPRITE:
-    create_sprite_wrapper()
+    create_sprite()
 
-if VISUALIZING_ENCODINGS:
-    visualize_encodings()
+if SETTING_UP_TENSORBOARD:
+    set_up_tensorboard()
+
+if RUNNING_TENSORBOARD:
+    run_tensorboard()
