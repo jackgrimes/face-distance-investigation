@@ -1,6 +1,6 @@
 import os
 
-from configs import lfw_path
+from main_distance_investigation.configs import lfw_path
 
 people = [os.path.join(lfw_path, person) for person in os.listdir(lfw_path)]
 

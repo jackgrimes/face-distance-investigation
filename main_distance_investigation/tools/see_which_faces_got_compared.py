@@ -9,7 +9,7 @@ import face_recognition
 import numpy as np
 import pandas as pd
 
-from configs import results_directory
+from main_distance_investigation.configs import results_directory
 
 # Which file to look at
 
