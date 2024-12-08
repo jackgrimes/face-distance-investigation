@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 from logging import getLogger
 
@@ -7,17 +8,18 @@ import face_recognition
 import numpy as np
 import pandas as pd
 import tensorflow.compat.v1 as tf
-from configs import data_path, lfw_path
+from configs import (
+    CHECKPOINT_FILE,
+    IMAGE_SIZE,
+    METADATA_FILE,
+    N_ROWS_PER_FILE,
+    data_path,
+    lfw_path,
+)
 from tensorboard.plugins import projector
 from tqdm import tqdm
 
 tf.disable_v2_behavior()
-
-LOG_DIR = os.path.join(data_path, "tensorboard_logs")
-IMAGE_SIZE = (100, 100)
-CHECKPOINT_FILE = os.path.join(LOG_DIR, "features.ckpt")
-METADATA_FILE = os.path.join(LOG_DIR, "metadata.tsv")
-SPRITES_FILE = os.path.join(LOG_DIR, "sprites.jpg")
 
 logger = getLogger(__name__)
 
@@ -107,6 +109,7 @@ def encode_faces(limit=None):
     all_encodings = pd.DataFrame()
     metadata = pd.DataFrame()
     counter = 0
+    file_counter = 0
 
     logger.info("Encoding faces")
 
@@ -156,17 +159,84 @@ def encode_faces(limit=None):
             )
             counter += 1
 
+            if counter % N_ROWS_PER_FILE == 0:
+                all_encodings.to_csv(
+                    os.path.join(
+                        data_path,
+                        "tensorboard_logs",
+                        f"all_encodings_{file_counter}.tsv",
+                    ),
+                    sep="\t",
+                    index=False,
+                    header=False,
+                )
+                metadata.to_csv(
+                    os.path.join(
+                        data_path, "tensorboard_logs", f"metadata_{file_counter}.tsv"
+                    ),
+                    sep="\t",
+                    index=False,
+                )
+                file_counter += 1
+                all_encodings = pd.DataFrame()
+                metadata = pd.DataFrame()
+
+    all_encodings.to_csv(
+        os.path.join(
+            data_path, "tensorboard_logs", f"all_encodings_{file_counter}.tsv"
+        ),
+        sep="\t",
+        index=False,
+        header=False,
+    )
+    metadata.to_csv(
+        os.path.join(data_path, "tensorboard_logs", f"metadata_{file_counter}.tsv"),
+        sep="\t",
+        index=False,
+    )
+
+    all_encodings = pd.DataFrame()
+    metadata = pd.DataFrame()
+
+    encodings_files = sorted(
+        [
+            f
+            for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
+            if (f.endswith(".tsv") and f.startswith("all_encodings_"))
+        ]
+    )
+
+    for f in encodings_files:
+        df = pd.read_csv(
+            os.path.join(data_path, "tensorboard_logs", f), sep="\t", header=None
+        )
+        all_encodings = pd.concat([all_encodings, df])
     all_encodings.to_csv(
         os.path.join(data_path, "tensorboard_logs", "all_encodings.tsv"),
         sep="\t",
         index=False,
         header=False,
     )
+    for f in encodings_files:
+        os.remove(os.path.join(data_path, "tensorboard_logs", f))
+
+    metadata_files = sorted(
+        [
+            f
+            for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
+            if (f.endswith(".tsv") and f.startswith("metadata_"))
+        ]
+    )
+    for f in metadata_files:
+        df = pd.read_csv(os.path.join(data_path, "tensorboard_logs", f), sep="\t")
+        metadata = pd.concat([metadata, df])
     metadata.to_csv(
         os.path.join(data_path, "tensorboard_logs", "metadata.tsv"),
         sep="\t",
         index=False,
     )
+    for f in metadata_files:
+        os.remove(os.path.join(data_path, "tensorboard_logs", f))
 
 
 def combine_images(data):
@@ -197,23 +267,56 @@ def create_sprite():
     )
     image_files = metadata["path"].tolist()
 
-    # Max sprite size is 8192 x 8192 so this max samples makes visualization easy
-    MAX_NUMBER_SAMPLES = 8191
+    # Max sprite size is 8192 x 8192
+    n_images = len(image_files)
+    n_rows = int(np.ceil(np.sqrt(n_images)))
+    max_allowable_image_size = 8192 // n_rows
+
+    if IMAGE_SIZE[0] > max_allowable_image_size:
+        logger.info(
+            f"Reducing image size down to {max_allowable_image_size} x {max_allowable_image_size} to keep sprite < 8192*8192 px"
+        )
+        image_size = (max_allowable_image_size, max_allowable_image_size)
+    else:
+        image_size = IMAGE_SIZE
 
     img_data = []
-    for img in image_files[:MAX_NUMBER_SAMPLES]:
+    for img in image_files:
         input_img = cv2.imread(img)
-        input_img_resize = cv2.resize(input_img, IMAGE_SIZE)
+        input_img_resize = cv2.resize(input_img, image_size)
         img_data.append(input_img_resize)
 
     img_data = np.array(img_data)
 
     sprite = combine_images(img_data)
-    cv2.imwrite(SPRITES_FILE, sprite)
+
+    sprite_files = [
+        f
+        for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
+        if (f.endswith(".jpg") and f.startswith("sprites_"))
+    ]
+    for f in sprite_files:
+        os.remove(os.path.join(data_path, "tensorboard_logs", f))
+
+    cv2.imwrite(
+        os.path.join(
+            data_path,
+            "tensorboard_logs",
+            f"sprites_{image_size[0]}_{image_size[1]}.jpg",
+        ),
+        sprite,
+    )
 
 
 def set_up_tensorboard():
     logger.info("Setting up tensorboard")
+
+    sprite_file = [
+        f
+        for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
+        if (f.endswith(".jpg") and f.startswith("sprites_"))
+    ][0]
+    image_size = tuple([int(n) for n in re.findall("\d+", sprite_file)])
 
     df = pd.read_csv(
         os.path.join(data_path, "tensorboard_logs", "all_encodings.tsv"),
@@ -228,19 +331,27 @@ def set_up_tensorboard():
         saver = tf.compat.v1.train.Saver([features])
 
         sess.run(features.initializer)
-        saver.save(sess, CHECKPOINT_FILE)
+        saver.save(sess, os.path.join(data_path, "tensorboard_logs", CHECKPOINT_FILE))
 
         config = projector.ProjectorConfig()
         embedding = config.embeddings.add()
         embedding.tensor_name = features.name
-        embedding.metadata_path = METADATA_FILE
+        embedding.metadata_path = os.path.join(
+            data_path, "tensorboard_logs", METADATA_FILE
+        )
 
         # This adds the sprite images
-        embedding.sprite.image_path = SPRITES_FILE
-        embedding.sprite.single_image_dim.extend(IMAGE_SIZE)
-        projector.visualize_embeddings(tf.summary.FileWriter(LOG_DIR), config)
+        embedding.sprite.image_path = os.path.join(
+            data_path, "tensorboard_logs", sprite_file
+        )
+        embedding.sprite.single_image_dim.extend(image_size)
+        projector.visualize_embeddings(
+            tf.summary.FileWriter(os.path.join(data_path, "tensorboard_logs")), config
+        )
 
 
 def run_tensorboard():
     logger.info("Running tensorboard")
-    subprocess.run(["tensorboard", "--logdir", LOG_DIR])
+    subprocess.run(
+        ["tensorboard", "--logdir", os.path.join(data_path, "tensorboard_logs")]
+    )
