@@ -15,6 +15,7 @@ from configs import (
     N_ROWS_PER_FILE,
     data_path,
     lfw_path,
+    other_images_paths,
 )
 from tensorboard.plugins import projector
 from tqdm import tqdm
@@ -106,8 +107,20 @@ def select_best_face(encodings, this_person_folder, file_path, image):
 
 
 def encode_faces(limit=None):
-    all_encodings = pd.DataFrame()
-    metadata = pd.DataFrame()
+
+    old_files = sorted(
+        [
+            f
+            for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
+            if (f.startswith("lfw_encodings") or f.startswith("lfw_metadata"))
+        ]
+    )
+
+    for f in old_files:
+        os.remove(os.path.join(data_path, "tensorboard_logs", f))
+
+    all_lfw_encodings = pd.DataFrame()
+    lfw_metadata = pd.DataFrame()
     counter = 0
     file_counter = 0
 
@@ -125,7 +138,7 @@ def encode_faces(limit=None):
     if limit is not None:
         all_file_paths = all_file_paths[0:limit]
 
-    logger.info("Getting face encodings from image files")
+    logger.info("Getting face encodings from lfw files")
     for file_path in tqdm(all_file_paths):
         this_person_folder = os.path.dirname(file_path)
         person = os.path.basename(this_person_folder).replace("_", " ")
@@ -144,10 +157,10 @@ def encode_faces(limit=None):
             encodings = encodings[0]
             new_encodings = pd.DataFrame(encodings).T
             new_encodings.index = [counter]
-            all_encodings = pd.concat([all_encodings, new_encodings])
-            metadata = pd.concat(
+            all_lfw_encodings = pd.concat([all_lfw_encodings, new_encodings])
+            lfw_metadata = pd.concat(
                 [
-                    metadata,
+                    lfw_metadata,
                     pd.DataFrame(
                         {
                             "name": person.replace("_", " "),
@@ -160,52 +173,148 @@ def encode_faces(limit=None):
             counter += 1
 
             if counter % N_ROWS_PER_FILE == 0:
-                all_encodings.to_csv(
+                all_lfw_encodings.to_csv(
                     os.path.join(
                         data_path,
                         "tensorboard_logs",
-                        f"all_encodings_{file_counter}.tsv",
+                        f"lfw_encodings_{file_counter}.tsv",
                     ),
                     sep="\t",
                     index=False,
                     header=False,
                 )
-                metadata.to_csv(
+                lfw_metadata.to_csv(
                     os.path.join(
-                        data_path, "tensorboard_logs", f"metadata_{file_counter}.tsv"
+                        data_path,
+                        "tensorboard_logs",
+                        f"lfw_metadata_{file_counter}.tsv",
                     ),
                     sep="\t",
                     index=False,
                 )
                 file_counter += 1
-                all_encodings = pd.DataFrame()
-                metadata = pd.DataFrame()
+                all_lfw_encodings = pd.DataFrame()
+                lfw_metadata = pd.DataFrame()
 
-    all_encodings.to_csv(
+    all_lfw_encodings.to_csv(
         os.path.join(
-            data_path, "tensorboard_logs", f"all_encodings_{file_counter}.tsv"
+            data_path, "tensorboard_logs", f"lfw_encodings_{file_counter}.tsv"
         ),
         sep="\t",
         index=False,
         header=False,
     )
-    metadata.to_csv(
-        os.path.join(data_path, "tensorboard_logs", f"metadata_{file_counter}.tsv"),
+    lfw_metadata.to_csv(
+        os.path.join(data_path, "tensorboard_logs", f"lfw_metadata_{file_counter}.tsv"),
         sep="\t",
         index=False,
     )
 
-    all_encodings = pd.DataFrame()
-    metadata = pd.DataFrame()
+    all_lfw_encodings = pd.DataFrame()
+    lfw_metadata = pd.DataFrame()
 
     encodings_files = sorted(
         [
             f
             for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
-            if (f.endswith(".tsv") and f.startswith("all_encodings_"))
+            if (f.endswith(".tsv") and f.startswith("lfw_encodings_"))
         ]
     )
 
+    for f in encodings_files:
+        df = pd.read_csv(
+            os.path.join(data_path, "tensorboard_logs", f), sep="\t", header=None
+        )
+        all_lfw_encodings = pd.concat([all_lfw_encodings, df])
+    all_lfw_encodings.to_csv(
+        os.path.join(data_path, "tensorboard_logs", "lfw_encodings.tsv"),
+        sep="\t",
+        index=False,
+        header=False,
+    )
+    for f in encodings_files:
+        os.remove(os.path.join(data_path, "tensorboard_logs", f))
+
+    lfw_metadata_files = sorted(
+        [
+            f
+            for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
+            if (f.endswith(".tsv") and f.startswith("lfw_metadata_"))
+        ]
+    )
+    for f in lfw_metadata_files:
+        df = pd.read_csv(os.path.join(data_path, "tensorboard_logs", f), sep="\t")
+        lfw_metadata = pd.concat([lfw_metadata, df])
+    lfw_metadata.to_csv(
+        os.path.join(data_path, "tensorboard_logs", "lfw_metadata.tsv"),
+        sep="\t",
+        index=False,
+    )
+    for f in lfw_metadata_files:
+        os.remove(os.path.join(data_path, "tensorboard_logs", f))
+
+
+def encode_other_images():
+    old_files = sorted(
+        [
+            f
+            for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
+            if (f.startswith("other_encodings") or f.startswith("other_metadata"))
+        ]
+    )
+
+    for f in old_files:
+        os.remove(os.path.join(data_path, "tensorboard_logs", f))
+
+    other_encodings = pd.DataFrame()
+    other_metadata = pd.DataFrame()
+    counter = 0
+
+    logger.info("Encoding othre faces")
+
+    logger.info("Scanning for files")
+
+    for file_path in tqdm(other_images_paths):
+        person = os.path.basename(file_path).replace("_", " ")
+
+        image = face_recognition.load_image_file(file_path)
+
+        encodings = face_recognition.face_encodings(image)
+
+        encodings = encodings[0]
+        new_encodings = pd.DataFrame(encodings).T
+        new_encodings.index = [counter]
+        other_encodings = pd.concat([other_encodings, new_encodings])
+        other_metadata = pd.concat(
+            [
+                other_metadata,
+                pd.DataFrame(
+                    {
+                        "name": os.path.splitext(person)[0].replace("_", " ").title(),
+                        "path": file_path,
+                    },
+                    index=[counter],
+                ),
+            ]
+        )
+        counter += 1
+
+    other_encodings.to_csv(
+        os.path.join(data_path, "tensorboard_logs", "other_encodings.tsv"),
+        sep="\t",
+        index=False,
+        header=False,
+    )
+    other_metadata.to_csv(
+        os.path.join(data_path, "tensorboard_logs", "other_metadata.tsv"),
+        sep="\t",
+        index=False,
+    )
+
+    all_encodings = pd.DataFrame()
+    all_metadata = pd.DataFrame()
+
+    encodings_files = ["lfw_encodings.tsv", "other_encodings.tsv"]
     for f in encodings_files:
         df = pd.read_csv(
             os.path.join(data_path, "tensorboard_logs", f), sep="\t", header=None
@@ -217,26 +326,16 @@ def encode_faces(limit=None):
         index=False,
         header=False,
     )
-    for f in encodings_files:
-        os.remove(os.path.join(data_path, "tensorboard_logs", f))
 
-    metadata_files = sorted(
-        [
-            f
-            for f in os.listdir(os.path.join(data_path, "tensorboard_logs"))
-            if (f.endswith(".tsv") and f.startswith("metadata_"))
-        ]
-    )
+    metadata_files = ["lfw_metadata.tsv", "other_metadata.tsv"]
     for f in metadata_files:
         df = pd.read_csv(os.path.join(data_path, "tensorboard_logs", f), sep="\t")
-        metadata = pd.concat([metadata, df])
-    metadata.to_csv(
-        os.path.join(data_path, "tensorboard_logs", "metadata.tsv"),
+        all_metadata = pd.concat([all_metadata, df])
+    all_metadata.to_csv(
+        os.path.join(data_path, "tensorboard_logs", "all_metadata.tsv"),
         sep="\t",
         index=False,
     )
-    for f in metadata_files:
-        os.remove(os.path.join(data_path, "tensorboard_logs", f))
 
 
 def combine_images(data):
@@ -262,10 +361,10 @@ def combine_images(data):
 
 def create_sprite():
     logger.info("Creating sprite")
-    metadata = pd.read_csv(
-        os.path.join(data_path, "tensorboard_logs", "metadata.tsv"), sep="\t"
+    all_metadata = pd.read_csv(
+        os.path.join(data_path, "tensorboard_logs", "all_metadata.tsv"), sep="\t"
     )
-    image_files = metadata["path"].tolist()
+    image_files = all_metadata["path"].tolist()
 
     # Max sprite size is 8192 x 8192
     n_images = len(image_files)
