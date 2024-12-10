@@ -14,8 +14,9 @@ from configs import (
     METADATA_FILE,
     N_ROWS_PER_FILE,
     data_path,
+    formats,
     lfw_path,
-    other_images_paths,
+    other_images_path,
 )
 from tensorboard.plugins import projector
 from tqdm import tqdm
@@ -107,7 +108,6 @@ def select_best_face(encodings, this_person_folder, file_path, image):
 
 
 def encode_faces(limit=None):
-
     old_files = sorted(
         [
             f
@@ -270,11 +270,17 @@ def encode_other_images():
     other_metadata = pd.DataFrame()
     counter = 0
 
-    logger.info("Encoding othre faces")
+    logger.info("Encoding other faces")
 
-    logger.info("Scanning for files")
+    for filename in tqdm(
+        [
+            f
+            for f in os.listdir(other_images_path)
+            if any([f.endswith(format) for format in formats])
+        ]
+    ):
+        file_path = os.path.join(other_images_path, filename)
 
-    for file_path in tqdm(other_images_paths):
         person = os.path.basename(file_path).replace("_", " ")
 
         image = face_recognition.load_image_file(file_path)
@@ -290,7 +296,14 @@ def encode_other_images():
                 other_metadata,
                 pd.DataFrame(
                     {
-                        "name": os.path.splitext(person)[0].replace("_", " ").title(),
+                        "name": re.sub(
+                            r"[0-9]+",
+                            "",
+                            os.path.splitext(person)[0]
+                            .replace("_", " ")
+                            .title()
+                            .strip(),
+                        ),
                         "path": file_path,
                     },
                     index=[counter],
