@@ -1,6 +1,6 @@
 lfw_path = "/path/to/lfw"
 data_path = "path/to/data/folder/face-distance-investigation"
-other_images_paths = "/path/to/other/images/"
+other_images_path = "/path/to/other/images/"
 
 ENCODING_LFW_FACES = True
 ENCODING_OTHER_IMAGES = True
